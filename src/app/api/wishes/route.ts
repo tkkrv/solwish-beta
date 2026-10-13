@@ -24,6 +24,8 @@ export async function POST(req: Request) {
     return apiError('invalid_input', 400, { fields: parsed.error.issues.map((i) => i.path.join('.')) });
   }
   const input = parsed.data;
+  // Фиатные цели временно отключены: создаём только вишлисты в SOL.
+  if (input.goalCurrency !== 'SOL') return apiError('invalid_input', 400, { fields: ['goalCurrency'] });
 
   try {
     // Создатель (необязательно) подтверждает кошелёк подписью — тогда вишлист появится в «Моих».

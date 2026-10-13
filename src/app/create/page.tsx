@@ -16,7 +16,7 @@ import { signWalletAuth } from '@/lib/client/wallet-auth';
 import { usePrices } from '@/lib/client/use-prices';
 import { dateLocale } from '@/lib/client/format';
 import { CURRENCY_SYMBOL, formatMoney, isFiat } from '@/lib/money';
-import { CURRENCIES, type Currency, type Wish } from '@/lib/types';
+import type { Currency, Wish } from '@/lib/types';
 import { useToast } from '@/components/Toast';
 import WishSummary from '@/components/wish/WishSummary';
 import QrCode from '@/components/ui/QrCode';
@@ -51,7 +51,8 @@ export default function CreateWishPage() {
 
   const [title, setTitle] = useState('');
   const [creatorName, setCreatorName] = useState('');
-  const [currency, setCurrency] = useState<Currency>('SOL');
+  // Пока только SOL: фиатные цели отключены (курс с хостинга получался ненадёжно).
+  const currency = 'SOL' as Currency;
   const [mode, setMode] = useState<'one' | 'many'>('one');
   const [goal, setGoal] = useState('');
   const [items, setItems] = useState<DraftItem[]>([
@@ -316,21 +317,6 @@ export default function CreateWishPage() {
           <fieldset className="space-y-3">
             <legend className="field-label">{c.fGoal}</legend>
             <div className="flex flex-wrap items-center gap-2">
-              <div role="group" aria-label={c.fCurrency} className="flex rounded-xl border border-line bg-surface p-0.5">
-                {CURRENCIES.map((cur) => (
-                  <button
-                    key={cur}
-                    type="button"
-                    aria-pressed={currency === cur}
-                    onClick={() => setCurrency(cur)}
-                    className={`rounded-[10px] px-2.5 py-1.5 text-xs font-bold transition ${
-                      currency === cur ? 'bg-ink text-white' : 'text-ink-2 hover:text-ink'
-                    }`}
-                  >
-                    {cur === 'SOL' ? 'SOL' : `${CURRENCY_SYMBOL[cur]} ${cur}`}
-                  </button>
-                ))}
-              </div>
               <div role="group" className="flex rounded-xl bg-canvas p-0.5">
                 {(['one', 'many'] as const).map((m) => (
                   <button
