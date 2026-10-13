@@ -49,6 +49,7 @@ export async function handleActionGet(req: Request, wishId: string | null) {
     const forWhom = wish.creatorName ? `For ${wish.creatorName}. ` : '';
     const remaining = summary ? Math.max(wish.amountSol - summary.totalSol, 0) : wish.amountSol;
     const presets = suggestedAmounts(wish.amountSol, remaining).slice(0, 3);
+    const cardAmount = presets[Math.min(1, presets.length - 1)];
 
     const payload: ActionGetResponse = {
       type: 'action',
@@ -57,8 +58,9 @@ export async function handleActionGet(req: Request, wishId: string | null) {
       description: `${forWhom}${wish.description || 'Send a gift with an on-chain greeting card.'}${progress}`.slice(0, 600),
       label: 'Send gift',
       links: {
+        // Blink-клиенты (Dialect, X) прячут кнопки, если есть форма из 2+ полей.
+        // Поэтому только одиночные поля: быстрые суммы + открытка + своя сумма.
         actions: [
-          // Быстрые суммы — без полей, в один клик.
           ...presets.map((amount) => ({
             type: 'transaction' as const,
             label: `${formatSol(amount)} SOL`,
@@ -66,23 +68,29 @@ export async function handleActionGet(req: Request, wishId: string | null) {
           })),
           {
             type: 'transaction',
-            label: 'Send gift',
-            href: `${base}?amount={amount}&senderName={senderName}&message={message}`,
+            label: `Gift ${formatSol(cardAmount)} SOL with card`,
+            href: `${base}?amount=${cardAmount}&message={message}`,
+            parameters: [
+              {
+                type: 'text',
+                name: 'message',
+                label: `Greeting card, public (up to ${LIMITS.messageMax} chars)`,
+                required: true,
+              },
+            ],
+          },
+          {
+            type: 'transaction',
+            label: 'Gift',
+            href: `${base}?amount={amount}`,
             parameters: [
               {
                 type: 'number',
                 name: 'amount',
-                label: 'Amount (SOL)',
+                label: 'Custom amount (SOL)',
                 required: true,
                 min: LIMITS.minGiftSol,
                 max: LIMITS.maxGiftSol,
-              },
-              { type: 'text', name: 'senderName', label: 'Your name', required: false },
-              {
-                type: 'textarea',
-                name: 'message',
-                label: `Greeting card (public, up to ${LIMITS.messageMax} chars)`,
-                required: false,
               },
             ],
           },

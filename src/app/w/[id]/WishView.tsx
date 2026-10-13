@@ -1,6 +1,9 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import Link from 'next/link';
+import { Zap } from 'lucide-react';
+import { useLocationHref } from '@/lib/client/hooks';
 import WishSummary from '@/components/wish/WishSummary';
 import GiftPanel from '@/components/wish/GiftPanel';
 import GreetingWall from '@/components/wish/GreetingWall';
@@ -13,6 +16,8 @@ export default function WishView({ wish }: { wish: Wish }) {
   const [failed, setFailed] = useState(false);
 
   const [tick, setTick] = useState(0);
+  const href = useLocationHref();
+  const siteOrigin = href ? new URL(href).origin : '';
 
   // Подарки читаются из блокчейна через наш API; обновляем раз в 30 секунд.
   useEffect(() => {
@@ -65,6 +70,13 @@ export default function WishView({ wish }: { wish: Wish }) {
 
       <div className="lg:sticky lg:top-24 lg:self-start">
         <GiftPanel wish={wish} remaining={Math.max(wish.amountSol - raised, 0)} onSent={refreshSoon} />
+        <Link
+          href={`/blink-preview?url=${encodeURIComponent(`${siteOrigin}/w/${wish.id}`)}`}
+          className="mt-3 flex items-center justify-center gap-1.5 text-sm font-semibold text-ink-2 hover:text-brand"
+        >
+          <Zap className="h-4 w-4" />
+          {t.blinkPreview.cta}
+        </Link>
       </div>
 
       <div className="lg:hidden">
