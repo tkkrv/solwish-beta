@@ -5,10 +5,14 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { useWalletModal } from '@solana/wallet-adapter-react-ui';
-import { ArrowLeft, Lock, LockOpen, Save, Trash2, Wallet } from 'lucide-react';
+import { ArrowLeft, Download, Lock, LockOpen, Plus, Save, Trash2, Wallet } from 'lucide-react';
 import { useLanguage } from '@/i18n/LanguageProvider';
 import { LIMITS } from '@/lib/config';
 import { COVER_PRESETS } from '@/lib/covers';
+import { CURRENCY_SYMBOL, formatMoney, wishGoal } from '@/lib/money';
+import { goalLimits } from '@/lib/validation';
+import { dateLocale } from '@/lib/client/format';
+import { fmt } from '@/i18n';
 import { fetchJson, humanizeError } from '@/lib/client/errors';
 import { signWalletAuth } from '@/lib/client/wallet-auth';
 import { useToast } from '@/components/Toast';
@@ -17,9 +21,16 @@ import NotFoundCard from '@/components/NotFoundCard';
 import type { UpdateWishInput } from '@/lib/validation';
 import type { Wish } from '@/lib/types';
 
+interface DraftItem {
+  key: string;
+  id?: string;
+  title: string;
+  goal: string;
+}
+
 export default function ManageWishPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const { t } = useLanguage();
+  const { t, locale } = useLanguage();
   const mg = t.manage;
   const toast = useToast();
   const router = useRouter();
@@ -28,6 +39,8 @@ export default function ManageWishPage({ params }: { params: Promise<{ id: strin
 
   const [wish, setWish] = useState<Wish | null | undefined>(undefined);
   const [form, setForm] = useState({ title: '', description: '', creatorName: '', eventDate: '', iconUrl: '' });
+  const [goal, setGoal] = useState('');
+  const [items, setItems] = useState<DraftItem[]>([]);
   const [busy, setBusy] = useState<null | 'save' | 'close' | 'delete'>(null);
 
   useEffect(() => {
@@ -46,6 +59,8 @@ export default function ManageWishPage({ params }: { params: Promise<{ id: strin
             eventDate: w.eventDate ?? '',
             iconUrl: w.iconUrl,
           });
+          setGoal(String(wishGoal(w)));
+          setItems(w.items.map((i) => ({ key: i.id, id: i.id, title: i.title, goal: String(i.goal) })));
         }
       })
       .catch(() => alive && setWish(null));
@@ -96,6 +111,15 @@ export default function ManageWishPage({ params }: { params: Promise<{ id: strin
     }
   };
 
+  const listMode = wish.items.length > 0;
+  const unit = wish.goalCurrency === 'SOL' ? 'SOL' : CURRENCY_SYMBOL[wish.goalCurrency];
+  const total = listMode ? items.reduce((s, i) => s + (Number(i.goal) > 0 ? Number(i.goal) : 0), 0) : Number(goal) || 0;
+  const { min, max } = goalLimits(wish.goalCurrency);
+  const goalOk =
+    total >= min &&
+    total <= max &&
+    (!listMode || (items.length > 0 && items.every((i) => i.title.trim() && Number(i.goal) > 0)));
+
   const save = () =>
     call('save', {
       title: form.title.trim(),
@@ -103,6 +127,9 @@ export default function ManageWishPage({ params }: { params: Promise<{ id: strin
       creatorName: form.creatorName.trim(),
       eventDate: form.eventDate || null,
       iconUrl: form.iconUrl,
+      ...(listMode
+        ? { items: items.map((i) => ({ id: i.id, title: i.title.trim(), goal: Number(i.goal) })) }
+        : { goal: Number(goal) }),
     });
 
   return (
@@ -112,7 +139,17 @@ export default function ManageWishPage({ params }: { params: Promise<{ id: strin
         {mg.back}
       </Link>
       <h1 className="mt-3 text-3xl font-extrabold tracking-tight">{mg.title}</h1>
-      <p className="mt-1 text-ink-2">{wish.title}</p>
+      <div className="mt-1 flex flex-wrap items-center justify-between gap-2">
+        <p className="text-ink-2">{wish.title}</p>
+        <a
+          href={`/w/${wish.id}/poster?download=1`}
+          download
+          className="inline-flex items-center gap-1.5 text-sm font-semibold text-brand hover:text-brand-strong"
+        >
+          <Download className="h-4 w-4" />
+          {mg.poster}
+        </a>
+      </div>
 
       {!me ? (
         <div className="card mt-8 p-6 text-center">
@@ -178,6 +215,85 @@ export default function ManageWishPage({ params }: { params: Promise<{ id: strin
                 onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
               />
             </div>
+            <fieldset className="space-y-2">
+              <legend className="field-label">{mg.goalTitle}</legend>
+              {listMode ? (
+                <>
+                  {items.map((it, idx) => (
+                    <div key={it.key} className="flex gap-2">
+                      <input
+                        aria-label={`${t.create.fTitle} ${idx + 1}`}
+                        className={`input flex-1 ${!it.title.trim() ? 'input-error' : ''}`}
+                        maxLength={LIMITS.itemTitleMax}
+                        value={it.title}
+                        placeholder={t.create.itemTitlePh}
+                        onChange={(e) =>
+                          setItems((l) => l.map((x) => (x.key === it.key ? { ...x, title: e.target.value } : x)))
+                        }
+                      />
+                      <div className="relative w-36 shrink-0">
+                        <input
+                          aria-label={t.create.itemGoal}
+                          type="number"
+                          inputMode="decimal"
+                          step="any"
+                          className={`input pr-10 font-mono ${!(Number(it.goal) > 0) ? 'input-error' : ''}`}
+                          value={it.goal}
+                          placeholder={t.create.itemGoal}
+                          onChange={(e) =>
+                            setItems((l) => l.map((x) => (x.key === it.key ? { ...x, goal: e.target.value } : x)))
+                          }
+                        />
+                        <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-ink-3">
+                          {unit}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        aria-label={t.create.removeItem}
+                        disabled={items.length <= 1}
+                        onClick={() => setItems((l) => l.filter((x) => x.key !== it.key))}
+                        className="btn-ghost px-2.5"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ))}
+                  {items.length < LIMITS.itemsMax && (
+                    <button
+                      type="button"
+                      onClick={() => setItems((l) => [...l, { key: `new-${Date.now()}`, title: '', goal: '' }])}
+                      className="inline-flex items-center gap-1.5 text-sm font-semibold text-brand hover:text-brand-strong"
+                    >
+                      <Plus className="h-4 w-4" />
+                      {t.create.addItem}
+                    </button>
+                  )}
+                  {total > 0 && (
+                    <p className="text-sm font-semibold">
+                      {fmt(t.create.total, { total: formatMoney(total, wish.goalCurrency, dateLocale(locale)) })}
+                    </p>
+                  )}
+                </>
+              ) : (
+                <div className="relative">
+                  <input
+                    aria-label={t.create.fGoal}
+                    type="number"
+                    inputMode="decimal"
+                    step="any"
+                    min={min}
+                    className={`input pr-16 font-mono ${goalOk ? '' : 'input-error'}`}
+                    value={goal}
+                    onChange={(e) => setGoal(e.target.value)}
+                  />
+                  <span className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-sm font-semibold text-ink-3">
+                    {unit}
+                  </span>
+                </div>
+              )}
+              <p className="text-xs text-ink-3">{listMode ? mg.goalHint : t.create.fGoalHint}</p>
+            </fieldset>
             <fieldset>
               <legend className="field-label">{t.create.fCover}</legend>
               <div className="grid grid-cols-4 gap-2 sm:grid-cols-8">
@@ -197,7 +313,7 @@ export default function ManageWishPage({ params }: { params: Promise<{ id: strin
                 ))}
               </div>
             </fieldset>
-            <button type="button" disabled={!!busy || form.title.trim().length < 2} onClick={save} className="btn-primary w-full">
+            <button type="button" disabled={!!busy || form.title.trim().length < 2 || !goalOk} onClick={save} className="btn-primary w-full">
               {busy === 'save' ? <Spinner /> : <Save className="h-4 w-4" />}
               {mg.save}
             </button>

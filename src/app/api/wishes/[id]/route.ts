@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { canManage, deleteWish, getWish, updateWish } from '@/lib/server/wishes';
+import { GoalChangeError, canManage, deleteWish, getWish, updateWish } from '@/lib/server/wishes';
 import { AuthError, verifyWalletAuth } from '@/lib/server/auth';
 import { apiError, handleServerError } from '@/lib/server/http';
 import { updateWishSchema, walletAuthSchema } from '@/lib/validation';
@@ -40,9 +40,10 @@ export async function PATCH(req: Request, ctx: RouteContext<'/api/wishes/[id]'>)
   try {
     const res = await authorize(id, parsed.data.auth);
     if ('error' in res) return res.error;
-    const wish = await updateWish(id, parsed.data.patch);
+    const wish = await updateWish(res.wish, parsed.data.patch);
     return NextResponse.json({ wish });
   } catch (err) {
+    if (err instanceof GoalChangeError) return apiError('invalid_input', 400, { fields: ['goal'] });
     return handleServerError(err, 'PATCH /api/wishes/[id]');
   }
 }

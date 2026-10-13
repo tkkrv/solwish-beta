@@ -95,6 +95,13 @@ export const updateWishSchema = z.object({
   iconUrl: coverUrl.optional(),
   eventDate: eventDate.nullable().optional(),
   closed: z.boolean().optional(),
+  /** Новый список желаний (id существующих пунктов сохраняются — на них ссылаются memo подарков). */
+  items: z
+    .array(itemSchema.extend({ id: z.string().regex(/^i\d{1,2}$/).optional() }))
+    .max(LIMITS.itemsMax)
+    .optional(),
+  /** Новая цель для вишлиста без списка (в его валюте). */
+  goal: z.coerce.number().finite().positive().optional(),
 });
 export type UpdateWishInput = z.infer<typeof updateWishSchema>;
 

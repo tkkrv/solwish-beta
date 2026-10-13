@@ -79,6 +79,14 @@ export const en = {
     telegram: 'Telegram bot',
   },
   create: {
+    tplTitle: "Start from a template",
+    poster: "Download a poster with QR",
+    tpl: {
+      birthday: { label: "🎂 Birthday", title: "Birthday gift", desc: "Instead of flowers that fade, send a gift that stays: a few warm words on the blockchain and a contribution to my wish.", items: [] as string[] },
+      wedding: { label: "💍 Wedding", title: "Our wedding wishlist", desc: "We are getting married! If you would like to give us a gift, here is what will help us start our life together.", items: ["Honeymoon trip", "Home appliances", "Dinner set"] as string[] },
+      housewarming: { label: "🏠 Housewarming", title: "Housewarming", desc: "We moved in! Help us make the new place cozy.", items: ["Sofa", "Coffee machine", "Plants"] as string[] },
+      dream: { label: "✨ Big dream", title: "Saving for a dream", desc: "I am saving for something important. Every gift brings it closer, and every card will stay with me.", items: [] as string[] },
+    },
     fCurrency: 'Currency',
     modeOne: 'One gift',
     modeMany: 'Several gifts',
@@ -128,6 +136,9 @@ export const en = {
     saveLinkHint: 'Save this link: it is the only way to come back to the wishlist.',
   },
   wish: {
+    halfway: "Halfway there! Thank you, friends",
+    posterScan: "Scan to send a gift",
+    posterHint: "Point your phone camera at the code",
     daysLeft: 'Days until the event: {n}',
     today: 'Today is the day! 🎉',
     itemsTitle: 'Wishes',
@@ -261,6 +272,9 @@ export const en = {
     cta: 'Preview as Blink',
   },
   my: {
+    copyLink: "Copy link",
+    qr: "QR code",
+    poster: "Poster (PNG)",
     title: 'My wishlists',
     subtitle: 'Wishlists where your wallet receives gifts or that you created, plus gifts you sent.',
     connectPrompt: 'Connect a wallet to see your wishlists and gifts.',
@@ -283,6 +297,9 @@ export const en = {
     tgDisabled: 'Notifications are not configured on this server yet.',
   },
   manage: {
+    goalTitle: "Goal and wishes",
+    goalHint: "Gifts already sent stay in place. If you remove a wish, its gifts count toward the overall goal.",
+    poster: "Poster with QR",
     title: 'Manage wishlist',
     notOwner: 'Only the recipient or creator wallet can manage this wishlist.',
     connectPrompt: 'Connect the recipient or creator wallet.',

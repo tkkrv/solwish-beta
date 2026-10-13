@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { useWalletModal } from '@solana/wallet-adapter-react-ui';
-import { Gift, Link2, Plus, Settings2, Wallet } from 'lucide-react';
+import { Download, Gift, Link2, Plus, QrCode as QrIcon, Settings2, Wallet } from 'lucide-react';
 import { useLanguage } from '@/i18n/LanguageProvider';
 import { fmt } from '@/i18n';
 import { formatSol } from '@/lib/amounts';
@@ -12,9 +12,12 @@ import { explorerTxUrl } from '@/lib/config';
 import { formatMoney, wishGoal } from '@/lib/money';
 import { computeProgress, daysUntil } from '@/lib/progress';
 import { dateLocale } from '@/lib/client/format';
+import { useLocationHref } from '@/lib/client/hooks';
 import Cover from '@/components/ui/Cover';
 import Progress from '@/components/ui/Progress';
 import Spinner from '@/components/ui/Spinner';
+import CopyButton from '@/components/ui/CopyButton';
+import QrCode from '@/components/ui/QrCode';
 import TelegramCard from '@/components/my/TelegramCard';
 import type { GiftsSummary, SentGift, Wish } from '@/lib/types';
 
@@ -24,6 +27,9 @@ type Tab = 'wishes' | 'sent';
 function WishRow({ wish, me }: { wish: Wish; me: string }) {
   const { t, locale } = useLanguage();
   const [summary, setSummary] = useState<GiftsSummary | null>(null);
+  const [showQr, setShowQr] = useState(false);
+  const href = useLocationHref();
+  const link = href ? `${new URL(href).origin}/w/${wish.id}` : '';
   useEffect(() => {
     let alive = true;
     fetch(`/api/wishes/${wish.id}/gifts`)
@@ -41,39 +47,61 @@ function WishRow({ wish, me }: { wish: Wish; me: string }) {
   const days = daysUntil(wish.eventDate);
 
   return (
-    <li className="card flex gap-4 p-4">
-      <Link href={`/w/${wish.id}`} className="shrink-0">
-        <Cover src={wish.iconUrl} alt={wish.title} className="h-20 w-20 rounded-xl" />
-      </Link>
-      <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-center gap-1.5 text-xs">
-          <span className="chip py-0.5">{wish.recipientWallet === me ? t.my.roleRecipient : t.my.roleCreator}</span>
-          {wish.closed && <span className="chip py-0.5 text-ink-3">{t.my.closedBadge}</span>}
-          {days !== null && days >= 0 && !wish.closed && (
-            <span className="chip py-0.5 text-brand">{days === 0 ? t.wish.today : fmt(t.wish.daysLeft, { n: days })}</span>
-          )}
-        </div>
-        <Link href={`/w/${wish.id}`} className="mt-1 block truncate font-bold hover:text-brand">
-          {wish.title}
+    <li className="card p-4">
+      <div className="flex gap-4">
+        <Link href={`/w/${wish.id}`} className="shrink-0">
+          <Cover src={wish.iconUrl} alt={wish.title} className="h-20 w-20 rounded-xl" />
         </Link>
-        <div className="mt-2">
-          <Progress value={progress && goal ? progress.raised / goal : 0} />
-        </div>
-        <div className="mt-1.5 flex items-center justify-between gap-2 text-xs font-semibold text-ink-2">
-          <span className={progress ? '' : 'animate-pulse text-ink-3'}>
-            {fmt(t.wish.raised, { raised: money(progress?.raised ?? 0), goal: money(goal) })}
-          </span>
-          <span className="text-ink-3">{fmt(t.wish.giftsCount, { count: progress?.count ?? 0 })}</span>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-1.5 text-xs">
+            <span className="chip py-0.5">{wish.recipientWallet === me ? t.my.roleRecipient : t.my.roleCreator}</span>
+            {wish.closed && <span className="chip py-0.5 text-ink-3">{t.my.closedBadge}</span>}
+            {days !== null && days >= 0 && !wish.closed && (
+              <span className="chip py-0.5 text-brand">{days === 0 ? t.wish.today : fmt(t.wish.daysLeft, { n: days })}</span>
+            )}
+          </div>
+          <Link href={`/w/${wish.id}`} className="mt-1 block truncate font-bold hover:text-brand">
+            {wish.title}
+          </Link>
+          <div className="mt-2">
+            <Progress value={progress && goal ? progress.raised / goal : 0} />
+          </div>
+          <div className="mt-1.5 flex items-center justify-between gap-2 text-xs font-semibold text-ink-2">
+            <span className={progress ? '' : 'animate-pulse text-ink-3'}>
+              {fmt(t.wish.raised, { raised: money(progress?.raised ?? 0), goal: money(goal) })}
+            </span>
+            <span className="text-ink-3">{fmt(t.wish.giftsCount, { count: progress?.count ?? 0 })}</span>
+          </div>
         </div>
       </div>
-      <Link
-        href={`/w/${wish.id}/manage`}
-        aria-label={t.wish.manage}
-        title={t.wish.manage}
-        className="btn-ghost self-start px-2.5 py-2"
-      >
-        <Settings2 className="h-4 w-4" />
-      </Link>
+      <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-line pt-3">
+        <CopyButton value={link} label={t.my.copyLink} className="btn-secondary px-3 py-1.5 text-sm" />
+        <button
+          type="button"
+          aria-expanded={showQr}
+          onClick={() => setShowQr((v) => !v)}
+          className={`btn-secondary px-3 py-1.5 text-sm ${showQr ? 'border-brand text-brand' : ''}`}
+        >
+          <QrIcon className="h-4 w-4" />
+          {t.my.qr}
+        </button>
+        <Link href={`/w/${wish.id}/manage`} className="btn-ghost ml-auto px-3 py-1.5 text-sm">
+          <Settings2 className="h-4 w-4" />
+          {t.wish.manage}
+        </Link>
+      </div>
+      {showQr && link && (
+        <div className="mt-3 flex flex-col items-center gap-3 rounded-xl bg-canvas p-4 sm:flex-row">
+          <QrCode value={link} size={150} label={t.create.qrHint} />
+          <div className="text-center sm:text-left">
+            <p className="text-sm text-ink-2">{t.create.qrHint}</p>
+            <a href={`/w/${wish.id}/poster?download=1`} download className="btn-primary mt-3 px-3 py-2 text-sm">
+              <Download className="h-4 w-4" />
+              {t.my.poster}
+            </a>
+          </div>
+        </div>
+      )}
     </li>
   );
 }

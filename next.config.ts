@@ -7,6 +7,7 @@ const nextConfig: NextConfig = {
     '/opengraph-image': ['./assets/fonts/**'],
     '/w/[id]/opengraph-image': ['./assets/fonts/**', './public/covers/**'],
     '/card/[signature]/story': ['./assets/fonts/**'],
+    '/w/[id]/poster': ['./assets/fonts/**', './public/covers/**'],
   },
   async headers() {
     return [

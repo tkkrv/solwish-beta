@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { useWalletModal } from '@solana/wallet-adapter-react-ui';
-import { ArrowRight, CircleAlert, CircleCheck, Gift, ImagePlus, Plus, Trash2, Wallet } from 'lucide-react';
+import { ArrowRight, CircleAlert, CircleCheck, Download, Gift, ImagePlus, Plus, Trash2, Wallet } from 'lucide-react';
 import { useLanguage } from '@/i18n/LanguageProvider';
 import { fmt } from '@/i18n';
 import { COVER_PRESETS, DEFAULT_COVER } from '@/lib/covers';
@@ -31,6 +31,15 @@ interface DraftItem {
   goal: string;
 }
 
+/** Шаблоны: тексты — в словаре (create.tpl), здесь — обложка. */
+const TEMPLATES = [
+  { key: 'birthday', cover: '/covers/birthday.jpg' },
+  { key: 'wedding', cover: '/covers/flowers.jpg' },
+  { key: 'housewarming', cover: '/covers/gift.jpg' },
+  { key: 'dream', cover: '/covers/travel.jpg' },
+] as const;
+type TemplateKey = (typeof TEMPLATES)[number]['key'];
+
 const today = () => new Date().toISOString().slice(0, 10);
 
 export default function CreateWishPage() {
@@ -56,6 +65,7 @@ export default function CreateWishPage() {
   const [customCover, setCustomCover] = useState('');
   const [useCustom, setUseCustom] = useState(false);
   const [saveToMy, setSaveToMy] = useState(true);
+  const [template, setTemplate] = useState<TemplateKey | null>(null);
 
   const [errors, setErrors] = useState<Set<FieldName>>(new Set());
   const [loading, setLoading] = useState(false);
@@ -78,6 +88,23 @@ export default function CreateWishPage() {
     () => (created && typeof window !== 'undefined' ? `${window.location.origin}/w/${created.id}` : ''),
     [created]
   );
+
+  /** Шаблон заполняет название, историю, обложку и (для списков) названия желаний. Суммы вводит человек. */
+  const applyTemplate = (key: TemplateKey) => {
+    const tpl = c.tpl[key];
+    setTemplate(key);
+    setTitle(tpl.title);
+    setDescription(tpl.desc);
+    setCover(TEMPLATES.find((x) => x.key === key)!.cover);
+    setUseCustom(false);
+    if (tpl.items.length) {
+      setMode('many');
+      setItems(tpl.items.map((title, i) => ({ key: Date.now() + i, title, goal: '' })));
+    } else {
+      setMode('one');
+    }
+    setErrors(new Set());
+  };
 
   const validate = (): Set<FieldName> => {
     const bad = new Set<FieldName>();
@@ -152,6 +179,7 @@ export default function CreateWishPage() {
     setCustomCover('');
     setUseCustom(false);
     setCover(DEFAULT_COVER);
+    setTemplate(null);
     setErrors(new Set());
   };
 
@@ -173,6 +201,14 @@ export default function CreateWishPage() {
             <QrCode value={link} size={200} label={c.qrHint} />
           </div>
           <p className="mt-2 text-xs text-ink-3">{c.qrHint}</p>
+          <a
+            href={`/w/${created.id}/poster?download=1`}
+            download
+            className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-brand hover:text-brand-strong"
+          >
+            <Download className="h-4 w-4" />
+            {c.poster}
+          </a>
 
           <div className="mt-6 flex items-center gap-2 rounded-xl border border-line bg-canvas p-1.5 pl-3">
             <span className="flex-1 truncate text-left font-mono text-sm text-ink-2">{link}</span>
@@ -205,7 +241,28 @@ export default function CreateWishPage() {
         <h1 className="text-3xl font-extrabold tracking-tight">{c.title}</h1>
         <p className="mt-2 max-w-lg text-ink-2">{c.subtitle}</p>
 
-        <form onSubmit={submit} noValidate className="card mt-8 space-y-6 p-5 sm:p-7">
+        <div className="mt-6">
+          <p className="mb-2 text-sm font-semibold text-ink-2">{c.tplTitle}</p>
+          <div className="flex flex-wrap gap-2">
+            {TEMPLATES.map(({ key }) => (
+              <button
+                key={key}
+                type="button"
+                aria-pressed={template === key}
+                onClick={() => applyTemplate(key)}
+                className={`rounded-full border px-3.5 py-1.5 text-sm font-semibold transition ${
+                  template === key
+                    ? 'border-brand bg-brand-soft text-brand'
+                    : 'border-line bg-surface text-ink-2 hover:border-line-strong hover:text-ink'
+                }`}
+              >
+                {c.tpl[key].label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <form onSubmit={submit} noValidate className="card mt-5 space-y-6 p-5 sm:p-7">
           <div>
             <label htmlFor="title" className="field-label">
               {c.fTitle}

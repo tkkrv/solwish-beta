@@ -3,6 +3,7 @@ import { customAlphabet } from 'nanoid';
 import { getSupabase } from './supabase';
 import { formatSol } from '../amounts';
 import { formatMoney } from '../money';
+import { computeProgress } from '../progress';
 import type { Gift, Wish } from '../types';
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '';
@@ -62,6 +63,8 @@ const T = {
     gift: (from: string, amount: string, title: string) => `🎁 <b>${from}</b> подарил(а) ${amount} на «${title}»`,
     anon: 'Аноним',
     open: 'Открыть открытку',
+    half: (title: string, raised: string, goal: string) => `🙌 Половина собрана: «${title}» — ${raised} из ${goal}`,
+    full: (title: string, raised: string, goal: string) => `🎉 Цель достигнута: «${title}» — ${raised} из ${goal}!`,
   },
   kk: {
     linked: '✅ Дайын! Әмиянға түскен сыйлықтар туралы осында хабарлаймын',
@@ -70,6 +73,8 @@ const T = {
     gift: (from: string, amount: string, title: string) => `🎁 <b>${from}</b> «${title}» үшін ${amount} сыйлады`,
     anon: 'Аноним',
     open: 'Ашықхатты ашу',
+    half: (title: string, raised: string, goal: string) => `🙌 Жартысы жиналды: «${title}» — ${goal} ішінен ${raised}`,
+    full: (title: string, raised: string, goal: string) => `🎉 Мақсатқа жеттік: «${title}» — ${goal} ішінен ${raised}!`,
   },
   en: {
     linked: '✅ Done! I will notify you here about gifts to wallet',
@@ -78,6 +83,8 @@ const T = {
     gift: (from: string, amount: string, title: string) => `🎁 <b>${from}</b> sent ${amount} for “${title}”`,
     anon: 'Anonymous',
     open: 'Open the card',
+    half: (title: string, raised: string, goal: string) => `🙌 Halfway there: “${title}” — ${raised} of ${goal}`,
+    full: (title: string, raised: string, goal: string) => `🎉 Goal reached: “${title}” — ${raised} of ${goal}!`,
   },
 };
 type Lang = keyof typeof T;
@@ -153,5 +160,24 @@ export async function notifyNewGifts(wish: Wish, gifts: Gift[], siteUrl: string)
       ];
       await sendMessage(link.chat_id, lines.join(''));
     }
+  }
+
+  // Отметки 50% и 100%: сообщаем, если именно эти новые подарки пересекли порог.
+  // Без живого курса — по суммам из memo (или курсу на момент создания), чтобы не зависеть от колебаний.
+  const sent = gifts.filter((g) => mine.has(g.signature));
+  if (!sent.length) return;
+  const after = computeProgress(wish, gifts, null);
+  const before = computeProgress(wish, gifts.filter((g) => !mine.has(g.signature)), null);
+  if (!(after.goal > 0)) return;
+  const crossed = (p: number) => before.raised < after.goal * p && after.raised >= after.goal * p;
+  const kind = crossed(1) ? 'full' : crossed(0.5) ? 'half' : null;
+  if (!kind) return;
+  const money = (v: number) => (wish.goalCurrency === 'SOL' ? `${formatSol(v)} SOL` : formatMoney(v, wish.goalCurrency));
+  for (const link of links as { chat_id: number; lang: string }[]) {
+    const t = T[pickLang(link.lang)];
+    await sendMessage(
+      link.chat_id,
+      `${t[kind](esc(wish.title), money(after.raised), money(after.goal))}\n<a href="${siteUrl}/w/${wish.id}">${siteUrl.replace(/^https?:\/\//, '')}/w/${wish.id}</a>`
+    );
   }
 }

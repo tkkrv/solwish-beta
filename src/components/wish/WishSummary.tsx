@@ -1,6 +1,6 @@
 'use client';
 
-import { CalendarHeart, Lock } from 'lucide-react';
+import { CalendarHeart, Lock, PartyPopper, Sparkles } from 'lucide-react';
 import Cover from '@/components/ui/Cover';
 import Progress from '@/components/ui/Progress';
 import { useLanguage } from '@/i18n/LanguageProvider';
@@ -44,6 +44,7 @@ export default function WishSummary({
   const money = (v: number) => formatMoney(v, currency, loc);
   const raised = progress?.raised ?? 0;
   const reached = goal > 0 && raised >= goal;
+  const halfway = !reached && goal > 0 && raised >= goal / 2;
   const days = daysUntil(eventDate);
 
   return (
@@ -96,7 +97,18 @@ export default function WishSummary({
               {fmt(t.wish.approx, { value: `${(goal / solPrice).toFixed(2)} SOL` })} · {t.create.rateDemo}
             </p>
           ) : null}
-          {reached && <p className="text-sm font-semibold text-mint">{t.wish.goalReached}</p>}
+          {reached && (
+            <div className="flex animate-fade-up items-center gap-2 rounded-xl bg-mint-soft px-4 py-3 text-sm font-semibold text-mint">
+              <PartyPopper className="h-5 w-5 shrink-0" />
+              {t.wish.goalReached}
+            </div>
+          )}
+          {halfway && (
+            <div className="flex animate-fade-up items-center gap-2 rounded-xl bg-brand-soft px-4 py-3 text-sm font-semibold text-brand">
+              <Sparkles className="h-5 w-5 shrink-0" />
+              {t.wish.halfway}
+            </div>
+          )}
         </div>
 
         {items.length > 0 && (

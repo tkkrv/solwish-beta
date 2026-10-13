@@ -3,7 +3,7 @@ import { customAlphabet } from 'nanoid';
 import { getSupabase } from './supabase';
 import { DEFAULT_COVER } from '../covers';
 import type { CreateWishInput, UpdateWishInput } from '../validation';
-import { wishIdSchema } from '../validation';
+import { goalLimits, wishIdSchema } from '../validation';
 import { CURRENCIES, type Currency, type Wish, type WishItem } from '../types';
 
 interface WishRow {
@@ -100,8 +100,52 @@ export async function createWish(
   return toWish(data as WishRow);
 }
 
-export async function updateWish(id: string, patch: UpdateWishInput): Promise<Wish | null> {
-  const row: Record<string, unknown> = { updated_at: new Date().toISOString() };
+export class GoalChangeError extends Error {}
+
+/**
+ * Пересчёт цели при изменении списка желаний или суммы.
+ * Для фиатных вишлистов SOL-эквивалент считается по курсу на момент создания (без запроса курса).
+ */
+function goalChange(wish: Wish, patch: UpdateWishInput): Record<string, unknown> | null {
+  if (patch.items === undefined && patch.goal === undefined) return null;
+  const round = (v: number) => Math.round(v * 100) / 100;
+  let items: WishItem[] = [];
+  let total: number;
+  if (patch.items?.length) {
+    const known = new Set(wish.items.map((i) => i.id));
+    const num = (id: string) => Number(id.slice(1));
+    let next = Math.max(0, ...wish.items.map((i) => num(i.id)), ...patch.items.map((i) => (i.id ? num(i.id) : 0))) + 1;
+    const used = new Set<string>();
+    items = patch.items.map((it) => {
+      let id = it.id && known.has(it.id) && !used.has(it.id) ? it.id : '';
+      if (!id) id = `i${next++}`;
+      used.add(id);
+      return { id, title: it.title, goal: round(it.goal) };
+    });
+    if (next > 100) throw new GoalChangeError('too_many_items');
+    total = items.reduce((s, i) => s + i.goal, 0);
+  } else if (patch.goal !== undefined) {
+    total = patch.goal;
+  } else {
+    throw new GoalChangeError('invalid_goal');
+  }
+  const { min, max } = goalLimits(wish.goalCurrency);
+  if (!(total >= min && total <= max)) throw new GoalChangeError('invalid_goal');
+
+  const row: Record<string, unknown> = { items };
+  if (wish.goalCurrency === 'SOL') {
+    row.amount_sol = Number(total.toFixed(6));
+  } else {
+    const rate = wish.goalFiat && wish.amountSol ? wish.goalFiat / wish.amountSol : 0;
+    row.goal_fiat = round(total);
+    if (rate > 0) row.amount_sol = Math.max(Number((total / rate).toFixed(6)), 0.000001);
+  }
+  return row;
+}
+
+export async function updateWish(wish: Wish, patch: UpdateWishInput): Promise<Wish | null> {
+  const id = wish.id;
+  const row: Record<string, unknown> = { updated_at: new Date().toISOString(), ...goalChange(wish, patch) };
   if (patch.title !== undefined) row.title = patch.title;
   if (patch.description !== undefined) row.description = patch.description;
   if (patch.creatorName !== undefined) row.creator_name = patch.creatorName;
