@@ -2,7 +2,9 @@ import { ImageResponse } from 'next/og';
 import { getWish } from '@/lib/server/wishes';
 import { getWishGifts } from '@/lib/server/chain';
 import { LogoBadge, OG_SIZE, coverDataUrl, ogFonts } from '@/lib/server/og';
-import { formatSol } from '@/lib/amounts';
+import { getSolPrices } from '@/lib/server/price';
+import { computeProgress } from '@/lib/progress';
+import { formatMoney, isFiat } from '@/lib/money';
 
 export const alt = 'SolWish wishlist';
 export const size = OG_SIZE;
@@ -29,8 +31,11 @@ export default async function Image({ params }: { params: Promise<{ id: string }
     getWishGifts(wish).catch(() => null),
     new Promise<null>((r) => setTimeout(() => r(null), 2500)),
   ]);
-  const raised = summary?.totalSol ?? 0;
-  const pct = Math.max(0, Math.min(1, wish.amountSol > 0 ? raised / wish.amountSol : 0));
+  const prices = isFiat(wish.goalCurrency) ? await getSolPrices().catch(() => null) : null;
+  const price = isFiat(wish.goalCurrency) ? (prices?.[wish.goalCurrency] ?? null) : null;
+  const progress = computeProgress(wish, summary?.gifts ?? [], price);
+  const pct = Math.max(0, Math.min(1, progress.goal > 0 ? progress.raised / progress.goal : 0));
+  const money = (v: number) => formatMoney(v, wish.goalCurrency, 'en-US');
   const cover = (await coverDataUrl(wish.iconUrl)) || (wish.iconUrl.startsWith('https://') ? wish.iconUrl : null);
 
   return new ImageResponse(
@@ -58,7 +63,7 @@ export default async function Image({ params }: { params: Promise<{ id: string }
               />
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 30, fontWeight: 800, color: '#0B1220' }}>
-              <span>{`${formatSol(raised)} / ${formatSol(wish.amountSol)} SOL`}</span>
+              <span>{`${money(progress.raised)} / ${money(progress.goal)}`}</span>
               <span style={{ color: '#7C3AED' }}>Send a gift</span>
             </div>
           </div>

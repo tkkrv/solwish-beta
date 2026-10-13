@@ -10,7 +10,9 @@ export type ApiErrorCode =
   | 'server_error'
   | 'memo_too_long'
   | 'invalid_amount'
-  | 'invalid_account';
+  | 'invalid_account'
+  | 'forbidden'
+  | 'price_unavailable';
 
 export function apiError(
   code: ApiErrorCode,

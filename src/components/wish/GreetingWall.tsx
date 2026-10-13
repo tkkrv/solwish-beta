@@ -6,7 +6,9 @@ import { useLanguage } from '@/i18n/LanguageProvider';
 import { fmt } from '@/i18n';
 import { formatSol } from '@/lib/amounts';
 import { dateLocale } from '@/lib/client/format';
-import type { Gift } from '@/lib/types';
+import type { Gift, Wish } from '@/lib/types';
+import { formatMoney, isFiat } from '@/lib/money';
+import { giftValue } from '@/lib/progress';
 import type { Locale } from '@/i18n';
 
 function formatDate(ts: number | null, locale: Locale) {
@@ -18,7 +20,15 @@ function formatDate(ts: number | null, locale: Locale) {
 }
 
 /** Стена открыток: данные берутся из блокчейна, а не из нашей базы. */
-export default function GreetingWall({ gifts }: { gifts: Gift[] | null }) {
+export default function GreetingWall({
+  gifts,
+  wish,
+  price = null,
+}: {
+  gifts: Gift[] | null;
+  wish?: Wish;
+  price?: number | null;
+}) {
   const { t, locale } = useLanguage();
 
   return (
@@ -50,13 +60,25 @@ export default function GreetingWall({ gifts }: { gifts: Gift[] | null }) {
                 </p>
                 <div className="mt-3 flex items-center justify-between gap-2 text-sm">
                   <span className="truncate font-semibold text-ink-2">
-                    {fmt(t.wish.from, { name: g.from || t.wish.anonymous })}
+                    {fmt(t.wish.from, {
+                      name: g.anonymous ? t.wish.anonymousLabel : g.from || t.wish.anonymous,
+                    })}
                   </span>
-                  <span className="shrink-0 font-mono font-semibold text-mint">+{formatSol(g.amountSol)} SOL</span>
+                  <span className="shrink-0 text-right font-mono font-semibold text-mint">
+                    +{formatSol(g.amountSol)} SOL
+                    {wish && isFiat(wish.goalCurrency) && (
+                      <span className="block text-[11px] font-medium text-ink-3">
+                        ≈ {formatMoney(giftValue(g, wish, price), wish.goalCurrency, dateLocale(locale))}
+                      </span>
+                    )}
+                  </span>
                 </div>
                 <div className="mt-1 flex items-center justify-between text-xs text-ink-3">
-                  <span className="inline-flex items-center gap-1">
-                    <BadgeCheck className="h-3.5 w-3.5" /> SPL Memo
+                  <span className="inline-flex min-w-0 items-center gap-1">
+                    <BadgeCheck className="h-3.5 w-3.5 shrink-0" />
+                    <span className="truncate">
+                      {(g.itemId && wish?.items.find((i) => i.id === g.itemId)?.title) || 'SPL Memo'}
+                    </span>
                   </span>
                   <span>{formatDate(g.blockTime, locale)}</span>
                 </div>

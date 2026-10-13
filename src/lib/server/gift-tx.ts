@@ -25,14 +25,24 @@ export async function buildGiftTransaction(opts: {
   amountSol: number;
   senderName: string;
   message: string;
+  itemId?: string | null;
+  anonymous?: boolean;
+  /** Сумма в валюте вишлиста по текущему курсу (для фиатных вишлистов). */
+  fiatValue?: number | null;
 }) {
   const { wish, sender, amountSol } = opts;
+  if (wish.closed) throw new GiftInputError('closed');
+  const itemId = opts.itemId && wish.items.some((i) => i.id === opts.itemId) ? opts.itemId : null;
   const lamports = Math.round(amountSol * LAMPORTS_PER_SOL);
   if (!Number.isSafeInteger(lamports) || lamports <= 0) {
     throw new GiftInputError('invalid_amount');
   }
 
-  const memo = buildWishMemo(wish.id, opts.senderName, opts.message);
+  const memo = buildWishMemo(wish.id, opts.senderName, opts.message, {
+    itemId,
+    fiat: wish.goalCurrency === 'SOL' ? null : opts.fiatValue,
+    anonymous: opts.anonymous,
+  });
   if (utf8Bytes(memo) > LIMITS.memoMaxBytes) {
     throw new GiftInputError('memo_too_long');
   }

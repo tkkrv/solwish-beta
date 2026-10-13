@@ -26,10 +26,15 @@ export const LIMITS = {
   nameMax: 24,
   /**
    * SPL Memo дорогой по compute: ~300–400 CU на байт (проверено в LiteSVM: 399 байт ≈ 145k CU).
-   * 140 символов кириллицы + имя 24 символа ≈ 400 байт — укладывается с запасом.
+   * 140 символов кириллицы + имя 24 символа + служебные поля ≈ 450 байт ≈ 160k CU — с запасом
+   * укладывается в лимит 300k, который мы ставим в своих транзакциях.
    */
   messageMax: 140,
-  memoMaxBytes: 440,
+  memoMaxBytes: 480,
+  itemsMax: 8,
+  itemTitleMax: 60,
+  minGoalFiat: 1,
+  maxGoalFiat: 1_000_000_000,
   minGiftSol: 0.001,
   maxGiftSol: 100,
   minGoalSol: 0.01,

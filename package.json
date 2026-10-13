@@ -1,6 +1,6 @@
 {
   "name": "solwish-beta",
-  "version": "0.2.0-beta",
+  "version": "0.3.0-beta",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -30,6 +30,7 @@
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "server-only": "^0.0.1",
+    "tweetnacl": "^1.0.3",
     "zod": "^3.25.76"
   },
   "devDependencies": {

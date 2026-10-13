@@ -7,7 +7,7 @@ import { useLanguage } from '@/i18n/LanguageProvider';
 export default function NotFoundCard({ kind }: { kind: 'wish' | 'card' | 'page' }) {
   const { t } = useLanguage();
   const title = kind === 'card' ? t.card.notFoundTitle : kind === 'wish' ? t.wish.notFoundTitle : t.errors.notFound;
-  const desc = kind === 'card' ? t.card.notFoundDesc : t.wish.notFoundDesc;
+  const desc = kind === 'card' ? t.card.notFoundDesc : kind === 'wish' ? t.wish.notFoundDesc : t.errors.pageNotFound;
   return (
     <div className="mx-auto max-w-md px-4 py-20">
       <div className="card p-8 text-center">

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Buffer } from 'buffer';
 import Link from 'next/link';
 import { useConnection, useWallet } from '@solana/wallet-adapter-react';
@@ -12,6 +12,7 @@ import {
   ExternalLink,
   Gift,
   Info,
+  Lock,
   QrCode as QrIcon,
   Smartphone,
   Wallet,
@@ -20,6 +21,8 @@ import { useLanguage } from '@/i18n/LanguageProvider';
 import { fmt } from '@/i18n';
 import { LIMITS, explorerTxUrl } from '@/lib/config';
 import { formatSol, suggestedAmounts } from '@/lib/amounts';
+import { fiatToSol, formatMoney, isFiat, roundFiat, solToFiat } from '@/lib/money';
+import { dateLocale } from '@/lib/client/format';
 import { buildWishMemo } from '@/lib/memo';
 import { utf8Bytes } from '@/lib/validation';
 import { fetchJson, humanizeError } from '@/lib/client/errors';
@@ -40,10 +43,15 @@ export default function GiftPanel({
   wish,
   remaining,
   onSent,
+  price = null,
+  perItem = {},
 }: {
   wish: Wish;
   remaining: number;
   onSent: () => void;
+  /** Курс SOL в валюте вишлиста (для фиатных вишлистов). */
+  price?: number | null;
+  perItem?: Record<string, number>;
 }) {
   const { t } = useLanguage();
   const w = t.wish;
@@ -52,8 +60,22 @@ export default function GiftPanel({
   const { publicKey, sendTransaction, connected } = useWallet();
   const { setVisible } = useWalletModal();
 
-  const presets = useMemo(() => suggestedAmounts(wish.amountSol, remaining), [wish.amountSol, remaining]);
-  const [amount, setAmount] = useState<string>(() => String(presets[1] ?? presets[0] ?? 0.05));
+  const { locale } = useLanguage();
+  const fiat = isFiat(wish.goalCurrency) && !!price;
+  const money = (v: number) => formatMoney(v, wish.goalCurrency, dateLocale(locale));
+
+  // Быстрые суммы: в фиатных вишлистах — круглые суммы в валюте, переведённые в SOL.
+  const presets =
+    fiat && price && wish.goalFiat
+      ? [...new Set([0.1, 0.25, 0.5].map((x) => roundFiat(wish.goalFiat! * x)))]
+          .map((v) => ({ sol: fiatToSol(v, price), label: money(v), sub: `${formatSol(fiatToSol(v, price))} SOL` }))
+          .filter((p) => p.sol >= LIMITS.minGiftSol && p.sol <= LIMITS.maxGiftSol)
+          .slice(0, 4)
+      : suggestedAmounts(wish.amountSol, remaining).map((sol) => ({ sol, label: formatSol(sol), sub: '' }));
+  const [amount, setAmount] = useState<string>('');
+  const effectiveAmount = amount || String(presets[1]?.sol ?? presets[0]?.sol ?? 0.05);
+  const [itemId, setItemId] = useState<string>('');
+  const [anonymous, setAnonymous] = useState(false);
   const [name, setName] = useState('');
   const [message, setMessage] = useState('');
   const [tab, setTab] = useState<Tab>('wallet');
@@ -64,11 +86,16 @@ export default function GiftPanel({
   const mobile = isClient && isMobileDevice();
   const inWallet = isClient && isInWalletBrowser();
 
-  const amountNum = Number(amount);
+  const amountNum = Number(effectiveAmount);
   const amountValid =
     Number.isFinite(amountNum) && amountNum >= LIMITS.minGiftSol && amountNum <= LIMITS.maxGiftSol;
   const senderName = name.trim() || w.anonymous;
-  const memo = buildWishMemo(wish.id, senderName, message.trim());
+  const fiatValue = fiat && price && amountValid ? solToFiat(amountNum, price) : null;
+  const memo = buildWishMemo(wish.id, senderName, message.trim(), {
+    itemId: itemId || null,
+    fiat: fiatValue,
+    anonymous,
+  });
   const memoTooLong = utf8Bytes(memo) > LIMITS.memoMaxBytes;
   const canSend = amountValid && !memoTooLong;
 
@@ -89,6 +116,8 @@ export default function GiftPanel({
     try {
       setStatus('signing');
       const qs = new URLSearchParams({ amount: String(amountNum), senderName, message: message.trim() });
+      if (itemId) qs.set('item', itemId);
+      if (anonymous) qs.set('anon', '1');
       const { transaction } = await fetchJson<{ transaction: string }>(
         `/api/actions/gift/${wish.id}?${qs.toString()}`,
         {
@@ -120,23 +149,24 @@ export default function GiftPanel({
   // ---------- Оплата с телефона через Solana Pay ----------
   // Новый reference-ключ на каждую комбинацию суммы и открытки: по нему находим оплату с телефона.
   const [reference, setReference] = useState<string>(() => Keypair.generate().publicKey.toBase58());
-  const [referenceFor, setReferenceFor] = useState(`${amount}|${name}|${message}`);
-  if (referenceFor !== `${amount}|${name}|${message}`) {
-    setReferenceFor(`${amount}|${name}|${message}`);
+  const refKey = `${effectiveAmount}|${name}|${message}|${itemId}|${anonymous}`;
+  const [referenceFor, setReferenceFor] = useState(refKey);
+  if (referenceFor !== refKey) {
+    setReferenceFor(refKey);
     setReference(Keypair.generate().publicKey.toBase58());
   }
 
-  const payUrl = useMemo(() => {
-    if (!reference || !canSend) return '';
-    return buildTransferRequestUrl({
-      recipient: wish.recipientWallet,
-      amount: amountNum,
-      reference,
-      label: 'SolWish',
-      message: wish.title.slice(0, 60),
-      memo,
-    });
-  }, [reference, canSend, wish.recipientWallet, wish.title, amountNum, memo]);
+  const payUrl =
+    reference && canSend
+      ? buildTransferRequestUrl({
+          recipient: wish.recipientWallet,
+          amount: amountNum,
+          reference,
+          label: 'SolWish',
+          message: wish.title.slice(0, 60),
+          memo,
+        })
+      : '';
 
   useEffect(() => {
     if (tab !== 'phone' || !payUrl || signature) return;
@@ -182,7 +212,7 @@ export default function GiftPanel({
           </p>
           <p className="whitespace-pre-line break-words text-ink">“{message.trim() || '🎁'}”</p>
           <div className="mt-2 flex justify-between text-sm font-semibold">
-            <span className="text-ink-2">{fmt(w.from, { name: senderName })}</span>
+            <span className="text-ink-2">{fmt(w.from, { name: anonymous ? w.anonymousLabel : senderName })}</span>
             <span className="font-mono text-mint">+{formatSol(amountNum)} SOL</span>
           </div>
         </div>
@@ -214,28 +244,68 @@ export default function GiftPanel({
   const busy = status !== 'idle';
   const messageLeft = LIMITS.messageMax - message.length;
 
+  if (wish.closed) {
+    return (
+      <div className="card p-6 text-center">
+        <Lock className="mx-auto mb-3 h-7 w-7 text-ink-3" />
+        <p className="font-bold">{w.closedTitle}</p>
+        <p className="mt-1 text-sm text-ink-2">{w.closedDesc}</p>
+      </div>
+    );
+  }
+
   // ---------- Форма ----------
   return (
     <div className="card p-5 sm:p-6">
+      {/* Выбор желания (если в вишлисте несколько подарков) */}
+      {wish.items.length > 0 && (
+        <fieldset className="mb-4">
+          <legend className="field-label">{w.forItem}</legend>
+          <div className="flex flex-wrap gap-2">
+            {[{ id: '', title: w.anyItem, goal: 0 }, ...wish.items].map((it) => {
+              const left = it.id ? Math.max(it.goal - (perItem[it.id] ?? 0), 0) : null;
+              const active = itemId === it.id;
+              return (
+                <button
+                  key={it.id || 'any'}
+                  type="button"
+                  aria-pressed={active}
+                  onClick={() => setItemId(it.id)}
+                  className={`rounded-xl border px-3 py-2 text-left text-sm font-semibold transition ${
+                    active ? 'border-brand bg-brand-soft text-brand' : 'border-line bg-surface hover:border-line-strong'
+                  }`}
+                >
+                  {it.title}
+                  {left !== null && left > 0 && <span className="ml-1.5 font-medium text-ink-3">· {money(left)}</span>}
+                  {left === 0 && <span className="ml-1.5 text-mint">✓</span>}
+                </button>
+              );
+            })}
+          </div>
+        </fieldset>
+      )}
+
       {/* Сумма */}
       <fieldset>
         <legend className="field-label">{w.amount}</legend>
-        <div className="grid grid-cols-4 gap-2">
-          {presets.map((p) => (
-            <button
-              key={p}
-              type="button"
-              onClick={() => setAmount(String(p))}
-              aria-pressed={Number(amount) === p}
-              className={`rounded-xl border px-2 py-2.5 font-mono text-sm font-semibold transition ${
-                Number(amount) === p
-                  ? 'border-brand bg-brand-soft text-brand'
-                  : 'border-line bg-surface text-ink hover:border-line-strong'
-              }`}
-            >
-              {formatSol(p)}
-            </button>
-          ))}
+        <div className={`grid gap-2 ${presets.length >= 4 ? 'grid-cols-4' : 'grid-cols-3'}`}>
+          {presets.map((p) => {
+            const active = Number(effectiveAmount) === p.sol;
+            return (
+              <button
+                key={p.sol}
+                type="button"
+                onClick={() => setAmount(String(p.sol))}
+                aria-pressed={active}
+                className={`rounded-xl border px-2 py-2 text-sm font-semibold transition ${
+                  active ? 'border-brand bg-brand-soft text-brand' : 'border-line bg-surface text-ink hover:border-line-strong'
+                } ${fiat ? '' : 'font-mono'}`}
+              >
+                {p.label}
+                {p.sub && <span className="block font-mono text-[11px] font-medium text-ink-3">{p.sub}</span>}
+              </button>
+            );
+          })}
         </div>
         <div className="relative mt-2">
           <input
@@ -245,15 +315,18 @@ export default function GiftPanel({
             step="any"
             min={LIMITS.minGiftSol}
             max={LIMITS.maxGiftSol}
-            value={amount}
+            value={effectiveAmount}
             onChange={(e) => setAmount(e.target.value)}
-            className={`input pr-14 font-mono ${amount && !amountValid ? 'input-error' : ''}`}
+            className={`input pr-14 font-mono ${!amountValid ? 'input-error' : ''}`}
           />
           <span className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-sm font-semibold text-ink-3">
             SOL
           </span>
         </div>
-        {amount && !amountValid && (
+        {fiat && amountValid && fiatValue !== null && (
+          <p className="mt-1 text-xs text-ink-3">{fmt(w.approx, { value: money(fiatValue) })}</p>
+        )}
+        {!amountValid && (
           <p className="mt-1 text-xs font-semibold text-danger">
             {fmt(t.errors.invalidAmount, { min: LIMITS.minGiftSol, max: LIMITS.maxGiftSol })}
           </p>
@@ -266,12 +339,22 @@ export default function GiftPanel({
         </label>
         <input
           id="gift-name"
+          disabled={anonymous}
           className="input"
           maxLength={LIMITS.nameMax}
           value={name}
           placeholder={w.yourNamePh}
           onChange={(e) => setName(e.target.value)}
         />
+        <label className="mt-2 inline-flex cursor-pointer items-center gap-2 text-sm text-ink-2">
+          <input
+            type="checkbox"
+            checked={anonymous}
+            onChange={(e) => setAnonymous(e.target.checked)}
+            className="h-4 w-4 rounded border-line-strong accent-brand"
+          />
+          {w.anonymousToggle}
+        </label>
       </div>
 
       <div className="mt-4">

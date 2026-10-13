@@ -1,6 +1,10 @@
 import { APP_NAME } from './config';
 
-/** Открытка к подарку из вишлиста. Формат v1 совместим с первой версией (поля to/date просто не пишем). */
+/**
+ * Открытка к подарку из вишлиста. Совместима с первой версией (to/date просто не пишем).
+ * Короткие необязательные поля экономят байты Memo (а значит и compute):
+ *   i — id желания из списка, f — сумма в валюте вишлиста на момент подарка, a — аноним.
+ */
 export interface WishMemo {
   app: typeof APP_NAME;
   v?: number;
@@ -8,9 +12,12 @@ export interface WishMemo {
   wishId: string;
   from: string;
   msg: string;
+  i?: string;
+  f?: number;
+  a?: 1;
 }
 
-/** Открытка к gift-ссылке. */
+/** Открытка к подарку-ссылке. */
 export interface LinkMemo {
   app: typeof APP_NAME;
   v: number;
@@ -19,15 +26,44 @@ export interface LinkMemo {
   msg: string;
 }
 
-export type SolWishMemo = WishMemo | LinkMemo;
+/** Ответ «Спасибо» получателя на конкретный подарок (ref — подпись транзакции подарка). */
+export interface ThanksMemo {
+  app: typeof APP_NAME;
+  v: number;
+  type: 'thanks';
+  ref: string;
+  msg: string;
+  from?: string;
+}
 
-export function buildWishMemo(wishId: string, from: string, msg: string): string {
-  const memo: WishMemo = { app: APP_NAME, v: 1, wishId, from, msg };
+export type SolWishMemo = WishMemo | LinkMemo | ThanksMemo;
+
+export function buildWishMemo(
+  wishId: string,
+  from: string,
+  msg: string,
+  extra: { itemId?: string | null; fiat?: number | null; anonymous?: boolean } = {}
+): string {
+  const memo: WishMemo = {
+    app: APP_NAME,
+    v: 1,
+    wishId,
+    from: extra.anonymous ? '' : from,
+    msg,
+  };
+  if (extra.itemId) memo.i = extra.itemId;
+  if (extra.fiat && Number.isFinite(extra.fiat)) memo.f = Math.round(extra.fiat * 100) / 100;
+  if (extra.anonymous) memo.a = 1;
   return JSON.stringify(memo);
 }
 
 export function buildLinkMemo(from: string, msg: string): string {
   const memo: LinkMemo = { app: APP_NAME, v: 1, type: 'link', from, msg };
+  return JSON.stringify(memo);
+}
+
+export function buildThanksMemo(ref: string, msg: string): string {
+  const memo: ThanksMemo = { app: APP_NAME, v: 1, type: 'thanks', ref, msg };
   return JSON.stringify(memo);
 }
 
@@ -44,7 +80,7 @@ export function parseSolWishMemo(raw: string | null | undefined): SolWishMemo | 
     if (start === -1) continue;
     try {
       const data = JSON.parse(text.slice(start));
-      if (data && data.app === APP_NAME && typeof data === 'object') {
+      if (data && typeof data === 'object' && data.app === APP_NAME) {
         return {
           ...data,
           from: typeof data.from === 'string' ? data.from : '',
@@ -59,5 +95,9 @@ export function parseSolWishMemo(raw: string | null | undefined): SolWishMemo | 
 }
 
 export function isWishMemo(m: SolWishMemo | null): m is WishMemo {
-  return !!m && m.type !== 'link' && typeof (m as WishMemo).wishId === 'string';
+  return !!m && m.type !== 'link' && m.type !== 'thanks' && typeof (m as WishMemo).wishId === 'string';
+}
+
+export function isThanksMemo(m: SolWishMemo | null): m is ThanksMemo {
+  return !!m && m.type === 'thanks' && typeof (m as ThanksMemo).ref === 'string';
 }

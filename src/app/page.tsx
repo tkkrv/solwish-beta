@@ -35,7 +35,7 @@ function HeroPreview() {
           </div>
           <Progress value={0.68} />
           <div className="flex justify-between text-xs font-semibold text-ink-2">
-            <span>{t.wish.raised.replace('{raised}', '3.4').replace('{goal}', '5')}</span>
+            <span>{t.wish.raised.replace('{raised}', '3.4 SOL').replace('{goal}', '5 SOL')}</span>
             <span>{t.wish.giftsCount.replace('{count}', '12')}</span>
           </div>
           <div className="btn-primary w-full">{t.wish.send.replace('{amount}', '0.5')}</div>

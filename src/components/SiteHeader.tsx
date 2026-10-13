@@ -13,6 +13,7 @@ export default function SiteHeader() {
   const links = [
     { href: '/create', label: t.nav.createWish },
     { href: '/gift', label: t.nav.giftLink },
+    { href: '/my', label: t.nav.myWishes },
   ];
 
   return (
@@ -43,7 +44,7 @@ export default function SiteHeader() {
       </div>
       {/* Мобильная навигация */}
       <div className="flex items-center justify-between gap-2 border-t border-line/60 px-4 py-2 md:hidden">
-        <nav className="flex min-w-0 gap-0.5">
+        <nav className="-mx-1 flex min-w-0 gap-0.5 overflow-x-auto px-1 [scrollbar-width:none]">
           {links.map((l) => (
             <Link
               key={l.href}
