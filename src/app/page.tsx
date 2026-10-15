@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { useLanguage } from '@/i18n/LanguageProvider';
 import Progress from '@/components/ui/Progress';
+import RotatingSlogan from '@/components/RotatingSlogan';
 
 function HeroPreview() {
   const { t, locale } = useLanguage();
@@ -84,8 +85,9 @@ export default function HomePage() {
             {h.badge}
           </span>
           <h1 className="text-[2.6rem] font-extrabold leading-[1.05] tracking-tight sm:text-6xl">
-            {h.titleA}
-            <br />
+            {/* Для поисковиков и экранных дикторов — неподвижный слоган; визуально первая половина меняется. */}
+            <span className="sr-only">{h.titleA} </span>
+            <RotatingSlogan key={h.rotating[0]} items={h.rotating} />
             <span className="bg-sol-gradient bg-clip-text text-transparent">{h.titleB}</span>
           </h1>
           <p className="mt-5 max-w-xl text-lg leading-relaxed text-ink-2">{h.subtitle}</p>
