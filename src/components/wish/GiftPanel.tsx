@@ -5,6 +5,7 @@ import { Buffer } from 'buffer';
 import Link from 'next/link';
 import { useConnection, useWallet } from '@solana/wallet-adapter-react';
 import { useWalletModal } from '@solana/wallet-adapter-react-ui';
+import { WalletReadyState } from '@solana/wallet-adapter-base';
 import { Keypair, PublicKey, Transaction } from '@solana/web3.js';
 import {
   BadgeCheck,
@@ -57,7 +58,7 @@ export default function GiftPanel({
   const w = t.wish;
   const toast = useToast();
   const { connection } = useConnection();
-  const { publicKey, sendTransaction, connected } = useWallet();
+  const { publicKey, sendTransaction, connected, wallets } = useWallet();
   const { setVisible } = useWalletModal();
 
   const { locale } = useLanguage();
@@ -78,13 +79,16 @@ export default function GiftPanel({
   const [anonymous, setAnonymous] = useState(false);
   const [name, setName] = useState('');
   const [message, setMessage] = useState('');
-  const [tab, setTab] = useState<Tab>('wallet');
+  const [tabChoice, setTab] = useState<Tab | null>(null);
   const [status, setStatus] = useState<Status>('idle');
   const [signature, setSignature] = useState<string | null>(null);
   const isClient = useIsClient();
   const pageUrl = useLocationHref();
   const mobile = isClient && isMobileDevice();
   const inWallet = isClient && isInWalletBrowser();
+  // Нет кошелька в браузере (или телефон вне приложения кошелька) → сразу оплата без подключения (QR / Solana Pay).
+  const hasWallet = connected || inWallet || wallets.some((x) => x.readyState === WalletReadyState.Installed);
+  const tab: Tab = tabChoice ?? (isClient && !hasWallet ? 'phone' : 'wallet');
 
   const amountNum = Number(effectiveAmount);
   const amountValid =
@@ -447,10 +451,29 @@ export default function GiftPanel({
         <div className="mt-4 flex flex-col items-center text-center">
           {payUrl ? (
             <>
-              <QrCode value={payUrl} size={220} label={w.qrTitle} />
+              {mobile && !inWallet && (
+                <div className="mb-4 w-full space-y-2">
+                  <a href={payUrl} className="btn-primary w-full py-3.5 text-base">
+                    <Wallet className="h-5 w-5" />
+                    {fmt(w.payInApp, { amount: formatSol(amountNum) })}
+                  </a>
+                  {pageUrl && (
+                    <div className="grid grid-cols-2 gap-2">
+                      <a href={phantomBrowseUrl(pageUrl)} className="btn-secondary py-2 text-sm">
+                        {w.openPhantom}
+                      </a>
+                      <a href={solflareBrowseUrl(pageUrl)} className="btn-secondary py-2 text-sm">
+                        {w.openSolflare}
+                      </a>
+                    </div>
+                  )}
+                  <p className="pt-1 text-xs text-ink-3">{w.qrOtherDevice}</p>
+                </div>
+              )}
+              <QrCode value={payUrl} size={mobile ? 180 : 220} label={w.qrTitle} />
               <p className="mt-3 font-semibold">{w.qrTitle}</p>
               <p className="mt-1 text-sm text-ink-2">{w.qrDesc}</p>
-              {mobile && (
+              {mobile && inWallet && (
                 <a href={payUrl} className="btn-secondary mt-3 w-full">
                   <Wallet className="h-4 w-4" />
                   {fmt(w.send, { amount: formatSol(amountNum) })}
