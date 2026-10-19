@@ -28,7 +28,7 @@ import { dateLocale } from '@/lib/client/format';
 import { buildWishMemo } from '@/lib/memo';
 import { utf8Bytes } from '@/lib/validation';
 import { checkText } from '@/lib/moderation';
-import { PREMIUM_ENABLED, PREMIUM_PRICE_SOL, PREMIUM_STYLES, STYLE_CLASSES, type PremiumStyle } from '@/lib/premium';
+import { PREMIUM_ENABLED as PREMIUM_ON, PREMIUM_PRICE_SOL, PREMIUM_STYLES, STYLE_CLASSES, TREASURY, type PremiumStyle } from '@/lib/premium';
 import { fetchJson, humanizeError } from '@/lib/client/errors';
 import { buildTransferRequestUrl } from '@/lib/client/solana-pay';
 import { isInWalletBrowser, isMobileDevice, phantomBrowseUrl, solflareBrowseUrl } from '@/lib/client/mobile';
@@ -67,6 +67,8 @@ export default function GiftPanel({
   const { setVisible } = useWalletModal();
 
   const { locale } = useLanguage();
+  // Если получатель вишлиста — сам кошелёк SolWish, премиум не предлагаем (платить самому себе бессмысленно).
+  const PREMIUM_ENABLED = PREMIUM_ON && wish.recipientWallet !== TREASURY;
   const fiat = isFiat(wish.goalCurrency) && !!price;
   const money = (v: number) => formatMoney(v, wish.goalCurrency, dateLocale(locale));
 

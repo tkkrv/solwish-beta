@@ -37,7 +37,10 @@ function systemTransfers(tx: ParsedTransactionWithMeta): ParsedTransfer[] {
 
 /** Перевод-подарок (а не оплата премиум-открытки в кошелёк SolWish). */
 function giftTransfer(transfers: ParsedTransfer[], from?: string): ParsedTransfer | undefined {
-  return transfers.find((t) => t.destination !== TREASURY && (!from || t.source === from)) ?? (TREASURY ? undefined : transfers[0]);
+  const mine = transfers.filter((t) => !from || t.source === from);
+  // Если кошелёк-казна совпадает с получателем (например, при тестах на своём кошельке),
+  // единственный перевод и есть подарок — берём его, а не говорим «открытка не найдена».
+  return mine.find((t) => t.destination !== TREASURY) ?? mine[0];
 }
 
 /** Премиум-стиль из memo засчитываем, только если в этой же транзакции есть оплата в кошелёк SolWish. */
@@ -134,10 +137,16 @@ export function invalidateGifts(wishId: string) {
 /** Открытка по подписи транзакции: проверяем, что это действительно перевод с memo SolWish. */
 export async function getGreetingCard(signature: string): Promise<GreetingCard | null> {
   if (!/^[1-9A-HJ-NP-Za-km-z]{64,90}$/.test(signature)) return null;
-  const tx = await getConnection().getParsedTransaction(signature, {
-    maxSupportedTransactionVersion: 0,
-    commitment: 'confirmed',
-  });
+  // Сразу после отправки RPC-нода сервера может ещё не знать о транзакции (кошелёк подтвердил её
+  // через другую ноду). Поэтому несколько раз переспрашиваем, прежде чем сказать «не найдено».
+  let tx: ParsedTransactionWithMeta | null = null;
+  for (let attempt = 0; attempt < 5; attempt++) {
+    tx = await getConnection()
+      .getParsedTransaction(signature, { maxSupportedTransactionVersion: 0, commitment: 'confirmed' })
+      .catch(() => null);
+    if (tx) break;
+    await new Promise((r) => setTimeout(r, 1500));
+  }
   if (!tx || tx.meta?.err) return null;
 
   const memo = memoFromTx(tx);
