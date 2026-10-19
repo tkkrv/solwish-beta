@@ -23,6 +23,7 @@ export function humanizeError(err: unknown, t: Dictionary): string {
   if (/blockhash not found|block height exceeded|expired/.test(msg)) {
     return t.errors.expired;
   }
+  if (/moderation|not allowed/.test(msg)) return t.errors.moderation;
   if (/rate_limited|429/.test(msg)) return t.errors.rateLimited;
   if (/db_not_configured/.test(msg)) return t.errors.dbNotConfigured;
   if (/memo_too_long|too long/.test(msg)) return t.errors.memoTooLong;

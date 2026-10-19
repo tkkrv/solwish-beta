@@ -21,6 +21,7 @@ import { formatSol } from '@/lib/amounts';
 import { dateLocale } from '@/lib/client/format';
 import ShareRow from '@/components/ui/ShareRow';
 import type { GreetingCard, ThankYou, Wish } from '@/lib/types';
+import { STYLE_CLASSES, isPremiumStyle } from '@/lib/premium';
 
 export default function CardView({
   card,
@@ -49,6 +50,7 @@ export default function CardView({
   const [sending, setSending] = useState(false);
   const isRecipient = publicKey?.toBase58() === card.recipient;
   const fromName = card.anonymous ? t.wish.anonymousLabel : card.from || t.wish.anonymous;
+  const style = isPremiumStyle(card.style) ? card.style : null;
 
   // «Спасибо» — отдельная транзакция только с Memo, подписанная получателем (без перевода денег).
   const sendThanks = async () => {
@@ -81,14 +83,20 @@ export default function CardView({
 
   return (
     <div className="mx-auto max-w-lg px-4 py-12">
-      <article className="relative overflow-hidden rounded-[1.75rem] bg-sol-gradient p-[2px] shadow-pop">
-        <div className="rounded-[calc(1.75rem-2px)] bg-surface p-7 sm:p-9">
+      <article
+        className={`relative overflow-hidden rounded-[1.75rem] shadow-pop ${style ? STYLE_CLASSES[style].frame : 'bg-sol-gradient p-[2px]'}`}
+      >
+        <div className={`rounded-[calc(1.75rem-5px)] p-7 sm:p-9 ${style ? STYLE_CLASSES[style].inner : 'bg-surface'}`}>
           <div className="flex items-center justify-between">
             <span className="chip border-mint/30 bg-mint-soft text-mint">
               <BadgeCheck className="h-3.5 w-3.5" />
               {fmt(c.verified, { network: NETWORK === 'mainnet-beta' ? 'Mainnet' : 'Devnet' })}
             </span>
-            <Gift className="h-6 w-6 text-brand" />
+            {style ? (
+              <span className="chip border-brand/30 bg-brand-soft text-brand">{t.wish.premiumNames[style]}</span>
+            ) : (
+              <Gift className="h-6 w-6 text-brand" />
+            )}
           </div>
 
           <p className="mt-8 text-sm font-semibold uppercase tracking-wider text-ink-3">{c.to}</p>
@@ -96,7 +104,7 @@ export default function CardView({
           {wish && <p className="mt-0.5 text-ink-2">{wish.title}</p>}
 
           <blockquote className="my-8 whitespace-pre-line break-words text-2xl font-semibold leading-snug text-ink">
-            {card.msg ? `“${card.msg}”` : '🎁'}
+            {card.hidden ? <span className="text-base font-medium text-ink-3">{t.wish.hiddenMsg}</span> : card.msg ? `“${card.msg}”` : '🎁'}
           </blockquote>
 
           <dl className="grid grid-cols-2 gap-4 border-t border-line pt-5 text-sm">

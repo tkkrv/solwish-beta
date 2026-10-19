@@ -4,6 +4,7 @@ import { GoalChangeError, canManage, deleteWish, getWish, updateWish } from '@/l
 import { AuthError, verifyWalletAuth } from '@/lib/server/auth';
 import { apiError, handleServerError } from '@/lib/server/http';
 import { updateWishSchema, walletAuthSchema } from '@/lib/validation';
+import { moderate } from '@/lib/server/ai';
 
 export async function GET(_req: Request, ctx: RouteContext<'/api/wishes/[id]'>) {
   const { id } = await ctx.params;
@@ -40,7 +41,10 @@ export async function PATCH(req: Request, ctx: RouteContext<'/api/wishes/[id]'>)
   try {
     const res = await authorize(id, parsed.data.auth);
     if ('error' in res) return res.error;
-    const wish = await updateWish(res.wish, parsed.data.patch);
+    const p = parsed.data.patch;
+    const mod = await moderate([p.title, p.description, p.creatorName, ...(p.items || []).map((i) => i.title)]);
+    if (!mod.ok) return apiError('moderation', 400, { reason: mod.reason });
+    const wish = await updateWish(res.wish, p);
     return NextResponse.json({ wish });
   } catch (err) {
     if (err instanceof GoalChangeError) return apiError('invalid_input', 400, { fields: ['goal'] });

@@ -6,6 +6,7 @@ import { AuthError, verifyWalletAuth } from '@/lib/server/auth';
 import { apiError, handleServerError } from '@/lib/server/http';
 import { clientIp, rateLimit } from '@/lib/server/rate-limit';
 import { fiatToSol } from '@/lib/money';
+import { moderate } from '@/lib/server/ai';
 
 export async function POST(req: Request) {
   if (!rateLimit(`create:${clientIp(req)}`, 10, 10 * 60_000)) {
@@ -28,6 +29,10 @@ export async function POST(req: Request) {
   if (input.goalCurrency !== 'SOL') return apiError('invalid_input', 400, { fields: ['goalCurrency'] });
 
   try {
+    // Вишлист публичный: проверяем тексты (словарь + AI, если включён).
+    const mod = await moderate([input.title, input.description, input.creatorName, ...(input.items || []).map((i) => i.title)]);
+    if (!mod.ok) return apiError('moderation', 400, { reason: mod.reason });
+
     // Создатель (необязательно) подтверждает кошелёк подписью — тогда вишлист появится в «Моих».
     let creatorWallet: string | null = null;
     if (input.auth) {

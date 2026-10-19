@@ -44,6 +44,10 @@ export interface Gift {
   itemId: string | null;
   /** Сумма в валюте вишлиста на момент подарка (из memo), если записана. */
   fiat: number | null;
+  /** Текст скрыт модерацией (грубые слова или ссылки). */
+  hidden?: boolean;
+  /** Премиум-оформление открытки (только если оплачено в той же транзакции). */
+  style?: string | null;
 }
 
 export interface GiftsSummary {
@@ -63,6 +67,8 @@ export interface GreetingCard {
   sender: string;
   recipient: string;
   blockTime: number | null;
+  hidden?: boolean;
+  style?: string | null;
 }
 
 export interface ThankYou {

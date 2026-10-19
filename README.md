@@ -12,9 +12,14 @@
 | **Wishlist** (`/create` → `/w/<id>`) | Set a goal in SOL and share one link. Friends gift from a connected wallet, from a phone via Solana Pay QR, or right inside X as a **Solana Blink**. Progress and the wall of greeting cards are read **directly from the blockchain**. |
 | **Gift link** (`/gift` → `/claim#…`) | TipLink-style: a one-time wallet is generated in the browser, funded with SOL + a card, and its key travels in the URL fragment (never sent to a server). The recipient claims to any wallet in one tap. |
 | **My wishlists** (`/my`) | Wishlists of the connected wallet (as recipient or creator) and gifts it sent, read from the chain. Copy link, QR and a printable poster for each wishlist. Edit details, wishes and goal, close or delete via a free wallet signature (no accounts). Telegram notifications about new gifts. |
+| **Pricing** (`/pricing`) | Free to gift (0% platform fee). Premium card designs paid in SOL in the same transaction as the gift; a business request form. |
 | **Greeting card** (`/card/<signature>`) | A shareable card verified against the transaction: amount, sender name and message from SPL Memo. The recipient can reply “thank you” on-chain; a 1080×1920 image for Stories. |
 
 Goals are set in SOL (fiat goals are supported in the data model but turned off in the UI for now); a wishlist can hold up to 8 separate wishes with their own progress, an event date with a countdown, anonymous gifts, ready-made templates (birthday, wedding, housewarming, dream) and 50% / 100% milestones (also in Telegram).
+
+## AI
+
+Optional, via any OpenAI-compatible Chat Completions API (OpenAI, Azure OpenAI): a greeting-card helper (three suggestions by tone and language, the user edits before sending) and semantic moderation on top of an always-on word and link filter. Without `AI_API_KEY` the site works as before.
 
 ## How it uses Solana
 

@@ -15,6 +15,8 @@ export interface WishMemo {
   i?: string;
   f?: number;
   a?: 1;
+  /** Премиум-оформление (действует, только если в транзакции есть оплата в кошелёк SolWish). */
+  s?: string;
 }
 
 /** Открытка к подарку-ссылке. */
@@ -42,7 +44,7 @@ export function buildWishMemo(
   wishId: string,
   from: string,
   msg: string,
-  extra: { itemId?: string | null; fiat?: number | null; anonymous?: boolean } = {}
+  extra: { itemId?: string | null; fiat?: number | null; anonymous?: boolean; style?: string | null } = {}
 ): string {
   const memo: WishMemo = {
     app: APP_NAME,
@@ -54,6 +56,7 @@ export function buildWishMemo(
   if (extra.itemId) memo.i = extra.itemId;
   if (extra.fiat && Number.isFinite(extra.fiat)) memo.f = Math.round(extra.fiat * 100) / 100;
   if (extra.anonymous) memo.a = 1;
+  if (extra.style) memo.s = extra.style;
   return JSON.stringify(memo);
 }
 

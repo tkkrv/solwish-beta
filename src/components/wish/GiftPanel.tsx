@@ -16,6 +16,7 @@ import {
   Lock,
   QrCode as QrIcon,
   Smartphone,
+  Sparkles,
   Wallet,
 } from 'lucide-react';
 import { useLanguage } from '@/i18n/LanguageProvider';
@@ -26,6 +27,8 @@ import { fiatToSol, formatMoney, isFiat, roundFiat, solToFiat } from '@/lib/mone
 import { dateLocale } from '@/lib/client/format';
 import { buildWishMemo } from '@/lib/memo';
 import { utf8Bytes } from '@/lib/validation';
+import { checkText } from '@/lib/moderation';
+import { PREMIUM_ENABLED, PREMIUM_PRICE_SOL, PREMIUM_STYLES, STYLE_CLASSES, type PremiumStyle } from '@/lib/premium';
 import { fetchJson, humanizeError } from '@/lib/client/errors';
 import { buildTransferRequestUrl } from '@/lib/client/solana-pay';
 import { isInWalletBrowser, isMobileDevice, phantomBrowseUrl, solflareBrowseUrl } from '@/lib/client/mobile';
@@ -39,6 +42,8 @@ import type { Wish } from '@/lib/types';
 
 type Status = 'idle' | 'signing' | 'confirming';
 type Tab = 'wallet' | 'phone';
+type Tone = 'warm' | 'funny' | 'formal' | 'short';
+const TONES: Tone[] = ['warm', 'funny', 'formal', 'short'];
 
 export default function GiftPanel({
   wish,
@@ -82,6 +87,24 @@ export default function GiftPanel({
   const [tabChoice, setTab] = useState<Tab | null>(null);
   const [status, setStatus] = useState<Status>('idle');
   const [signature, setSignature] = useState<string | null>(null);
+  // Премиум-оформление (оплачивается в той же транзакции; только при оплате через кошелёк).
+  const [cardStyle, setCardStyle] = useState<PremiumStyle | ''>('');
+  const [sentStyle, setSentStyle] = useState<PremiumStyle | ''>('');
+  // AI-помощник открытки (кнопка появляется, только если AI включён на сервере).
+  const [aiEnabled, setAiEnabled] = useState(false);
+  const [aiOpen, setAiOpen] = useState(false);
+  const [aiBusy, setAiBusy] = useState<Tone | null>(null);
+  const [aiOptions, setAiOptions] = useState<string[]>([]);
+  useEffect(() => {
+    let alive = true;
+    fetch('/api/ai/status')
+      .then((r) => (r.ok ? r.json() : { enabled: false }))
+      .then((d) => alive && setAiEnabled(Boolean(d.enabled)))
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
   const isClient = useIsClient();
   const pageUrl = useLocationHref();
   const mobile = isClient && isMobileDevice();
@@ -101,7 +124,26 @@ export default function GiftPanel({
     anonymous,
   });
   const memoTooLong = utf8Bytes(memo) > LIMITS.memoMaxBytes;
-  const canSend = amountValid && !memoTooLong;
+  // Открытка навсегда в блокчейне: грубые слова и ссылки ловим сразу, ещё до отправки.
+  const textCheck = checkText(`${name} ${message}`);
+  const canSend = amountValid && !memoTooLong && textCheck.ok;
+
+  const suggest = async (tone: Tone) => {
+    setAiBusy(tone);
+    try {
+      const { options } = await fetchJson<{ options: string[] }>('/api/ai/greeting', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ wishId: wish.id, lang: locale, tone, draft: message.trim() }),
+      });
+      setAiOptions(options);
+    } catch (err) {
+      const m = (err as Error)?.message || '';
+      toast(/rate_limited/.test(m) ? t.errors.rateLimited : w.aiError);
+    } finally {
+      setAiBusy(null);
+    }
+  };
 
   // ---------- Оплата с подключённого кошелька ----------
   const sendWithWallet = async () => {
@@ -119,9 +161,22 @@ export default function GiftPanel({
     }
     try {
       setStatus('signing');
+      // Если AI включён — дополнительная проверка смысла текста (словарь уже проверил грубые слова).
+      if (aiEnabled && message.trim()) {
+        const mod = await fetchJson<{ ok: boolean }>('/api/ai/moderate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ texts: [name.trim(), message.trim()] }),
+        }).catch(() => ({ ok: true }));
+        if (!mod.ok) {
+          toast(w.modAi);
+          return;
+        }
+      }
       const qs = new URLSearchParams({ amount: String(amountNum), senderName, message: message.trim() });
       if (itemId) qs.set('item', itemId);
       if (anonymous) qs.set('anon', '1');
+      if (PREMIUM_ENABLED && cardStyle) qs.set('style', cardStyle);
       const { transaction } = await fetchJson<{ transaction: string }>(
         `/api/actions/gift/${wish.id}?${qs.toString()}`,
         {
@@ -140,6 +195,7 @@ export default function GiftPanel({
       const result = await connection.confirmTransaction({ signature: sig, ...latest }, 'confirmed');
       if (result.value.err) throw new Error('transaction failed');
 
+      setSentStyle(PREMIUM_ENABLED ? cardStyle : '');
       setSignature(sig);
       celebrate();
       onSent();
@@ -182,6 +238,7 @@ export default function GiftPanel({
         if (!stopped && sigs[0] && !sigs[0].err) {
           stopped = true;
           clearInterval(timer);
+          setSentStyle('');
           setSignature(sigs[0].signature);
           celebrate();
           onSent();
@@ -210,15 +267,22 @@ export default function GiftPanel({
             <p className="text-sm text-ink-2">{w.successDesc}</p>
           </div>
         </div>
-        <div className="rounded-2xl bg-gradient-to-br from-brand-soft to-mint-soft p-4">
+        <div className={`rounded-2xl ${sentStyle ? `${STYLE_CLASSES[sentStyle].frame}` : 'p-0'}`}>
+        <div
+          className={`rounded-2xl p-4 ${
+            sentStyle ? STYLE_CLASSES[sentStyle].inner : 'bg-gradient-to-br from-brand-soft to-mint-soft'
+          }`}
+        >
           <p className="mb-1 flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider text-brand">
             <BadgeCheck className="h-3.5 w-3.5" /> SPL Memo
+            {sentStyle && <span className="ml-auto text-ink-2">{w.premiumNames[sentStyle]}</span>}
           </p>
           <p className="whitespace-pre-line break-words text-ink">“{message.trim() || '🎁'}”</p>
           <div className="mt-2 flex justify-between text-sm font-semibold">
             <span className="text-ink-2">{fmt(w.from, { name: anonymous ? w.anonymousLabel : senderName })}</span>
             <span className="font-mono text-mint">+{formatSol(amountNum)} SOL</span>
           </div>
+        </div>
         </div>
         <div className="mt-4 grid gap-2">
           <Link href={`/card/${signature}`} className="btn-primary">
@@ -377,11 +441,101 @@ export default function GiftPanel({
           placeholder={w.messagePh}
           onChange={(e) => setMessage(e.target.value)}
         />
+        {!textCheck.ok && (
+          <p role="alert" className="mt-1.5 text-xs font-semibold text-danger">
+            {textCheck.reason === 'link' ? w.modLink : w.modProfanity}
+          </p>
+        )}
         <p className="mt-1.5 flex items-start gap-1.5 text-xs text-ink-3">
           <Info className="mt-px h-3.5 w-3.5 shrink-0" />
           {w.publicNote}
         </p>
+        {aiEnabled && (
+          <div className="mt-2">
+            <button
+              type="button"
+              aria-expanded={aiOpen}
+              onClick={() => setAiOpen((v) => !v)}
+              className="inline-flex items-center gap-1.5 text-sm font-semibold text-brand hover:text-brand-strong"
+            >
+              <Sparkles className="h-4 w-4" />
+              {w.aiHelp}
+            </button>
+            {aiOpen && (
+              <div className="mt-2 rounded-xl border border-line bg-canvas p-3">
+                <div className="flex flex-wrap gap-1.5">
+                  {TONES.map((tone) => (
+                    <button
+                      key={tone}
+                      type="button"
+                      disabled={!!aiBusy}
+                      onClick={() => suggest(tone)}
+                      className="inline-flex items-center gap-1 rounded-full border border-line bg-surface px-3 py-1 text-xs font-semibold text-ink-2 hover:border-brand hover:text-brand disabled:opacity-60"
+                    >
+                      {aiBusy === tone && <Spinner />}
+                      {w.aiTones[tone]}
+                    </button>
+                  ))}
+                </div>
+                {aiBusy && <p className="mt-2 text-xs text-ink-3">{w.aiLoading}</p>}
+                {aiOptions.length > 0 && (
+                  <>
+                    <ul className="mt-2 space-y-1.5">
+                      {aiOptions.map((o) => (
+                        <li key={o}>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setMessage(o.slice(0, LIMITS.messageMax));
+                              setAiOpen(false);
+                              setAiOptions([]);
+                            }}
+                            className="w-full break-words rounded-lg border border-line bg-surface px-3 py-2 text-left text-sm hover:border-brand"
+                          >
+                            {o}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                    <p className="mt-1.5 text-xs text-ink-3">{w.aiPick}</p>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </div>
+
+      {PREMIUM_ENABLED && (
+        <fieldset className="mt-4">
+          <legend className="field-label">{w.premiumTitle}</legend>
+          <div className="grid grid-cols-4 gap-2">
+            {(['', ...PREMIUM_STYLES] as const).map((st) => {
+              const active = cardStyle === st;
+              return (
+                <button
+                  key={st || 'classic'}
+                  type="button"
+                  aria-pressed={active}
+                  onClick={() => setCardStyle(st)}
+                  className={`flex flex-col items-center gap-1 rounded-xl border p-1.5 text-[11px] font-semibold transition ${
+                    active ? 'border-brand bg-brand-soft text-brand' : 'border-line bg-surface text-ink-2 hover:border-line-strong'
+                  }`}
+                >
+                  <span
+                    className={`h-8 w-full rounded-lg ${st ? STYLE_CLASSES[st].swatch : 'bg-gradient-to-br from-brand-soft to-mint-soft'}`}
+                  />
+                  {st ? w.premiumNames[st] : w.premiumFree}
+                  <span className="font-mono font-medium text-ink-3">
+                    {st ? fmt(w.premiumPrice, { price: formatSol(PREMIUM_PRICE_SOL) }) : '0'}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+          {cardStyle && <p className="mt-1.5 text-xs text-ink-3">{w.premiumHint}</p>}
+        </fieldset>
+      )}
 
       {/* Способ оплаты */}
       <div role="tablist" className="mt-5 grid grid-cols-2 rounded-xl bg-canvas p-1">
@@ -438,7 +592,7 @@ export default function GiftPanel({
                 ? w.signing
                 : status === 'confirming'
                   ? w.confirming
-                  : fmt(w.send, { amount: amountValid ? formatSol(amountNum) : '—' })}
+                  : fmt(cardStyle ? w.sendPremium : w.send, { amount: amountValid ? formatSol(amountNum) : '—' })}
             </button>
           ) : (
             <button type="button" onClick={() => setVisible(true)} className="btn-primary w-full py-3.5 text-base">
@@ -449,6 +603,9 @@ export default function GiftPanel({
         </div>
       ) : (
         <div className="mt-4 flex flex-col items-center text-center">
+          {cardStyle && payUrl && (
+            <p className="mb-3 w-full rounded-xl bg-warn-soft px-3 py-2 text-xs font-medium text-warn">{w.premiumWalletOnly}</p>
+          )}
           {payUrl ? (
             <>
               {mobile && !inWallet && (

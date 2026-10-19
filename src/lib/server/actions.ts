@@ -18,6 +18,8 @@ import { formatSol, suggestedAmounts } from '../amounts';
 import { computeProgress } from '../progress';
 import { fiatToSol, formatMoney, isFiat, roundFiat, solToFiat } from '../money';
 import type { Wish } from '../types';
+import { checkText } from '../moderation';
+import { PREMIUM_PRICE_SOL } from '../premium';
 
 export const ACTION_HEADERS = createActionHeaders({
   chainId: NETWORK === 'mainnet-beta' ? BLOCKCHAIN_IDS.mainnet : BLOCKCHAIN_IDS.devnet,
@@ -178,6 +180,7 @@ export async function handleActionPost(req: Request, wishId: string | null) {
     message: param(url, body, 'message'),
     item: param(url, body, 'item'),
     anon: param(url, body, 'anon'),
+    style: param(url, body, 'style'),
   });
   if (!parsed.success) {
     return actionError(
@@ -186,12 +189,17 @@ export async function handleActionPost(req: Request, wishId: string | null) {
     );
   }
 
+  // Открытка навсегда останется в блокчейне: грубые слова и ссылки не пропускаем.
+  if (!checkText(parsed.data.message).ok || !checkText(parsed.data.senderName).ok) {
+    return actionError('The greeting card contains words or links that are not allowed', 400);
+  }
+
   try {
     const wish = await getWish(wishId);
     if (!wish) return actionError('Wishlist not found', 404);
     const price = await priceFor(wish);
 
-    const { transaction } = await buildGiftTransaction({
+    const { transaction, premium } = await buildGiftTransaction({
       wish,
       sender,
       amountSol: parsed.data.amount,
@@ -200,13 +208,16 @@ export async function handleActionPost(req: Request, wishId: string | null) {
       itemId: parsed.data.item ?? null,
       anonymous: parsed.data.anon,
       fiatValue: price ? solToFiat(parsed.data.amount, price) : null,
+      style: parsed.data.style ?? null,
     });
 
     const payload = await createPostResponse({
       fields: {
         type: 'transaction',
         transaction,
-        message: `Gift of ${formatSol(parsed.data.amount)} SOL with an on-chain greeting card`,
+        message: premium
+          ? `Gift of ${formatSol(parsed.data.amount)} SOL with a premium greeting card (+${formatSol(PREMIUM_PRICE_SOL)} SOL)`
+          : `Gift of ${formatSol(parsed.data.amount)} SOL with an on-chain greeting card`,
       },
     });
     return Response.json(payload, { headers: ACTION_HEADERS });

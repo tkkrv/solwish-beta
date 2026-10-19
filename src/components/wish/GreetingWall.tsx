@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { BadgeCheck, MessageCircle } from 'lucide-react';
+import { BadgeCheck, MessageCircle, Sparkles } from 'lucide-react';
 import { useLanguage } from '@/i18n/LanguageProvider';
 import { fmt } from '@/i18n';
 import { formatSol } from '@/lib/amounts';
@@ -10,6 +10,7 @@ import type { Gift, Wish } from '@/lib/types';
 import { formatMoney, isFiat } from '@/lib/money';
 import { giftValue } from '@/lib/progress';
 import type { Locale } from '@/i18n';
+import { STYLE_CLASSES, isPremiumStyle } from '@/lib/premium';
 
 function formatDate(ts: number | null, locale: Locale) {
   if (!ts) return '';
@@ -53,10 +54,18 @@ export default function GreetingWall({
             <li key={g.signature}>
               <Link
                 href={`/card/${g.signature}`}
-                className="card flex h-full flex-col p-4 transition hover:-translate-y-0.5 hover:shadow-pop"
+                className={`card flex h-full flex-col p-4 transition hover:-translate-y-0.5 hover:shadow-pop ${
+                  isPremiumStyle(g.style) ? `${STYLE_CLASSES[g.style].inner} ${STYLE_CLASSES[g.style].ring}` : ''
+                }`}
               >
+                {isPremiumStyle(g.style) && (
+                  <span className="mb-2 inline-flex items-center gap-1 self-start text-[11px] font-bold uppercase tracking-wider text-brand">
+                    <Sparkles className="h-3.5 w-3.5" />
+                    {t.wish.premiumBadge}
+                  </span>
+                )}
                 <p className="flex-1 whitespace-pre-line break-words leading-snug text-ink">
-                  {g.msg ? `“${g.msg}”` : '🎁'}
+                  {g.hidden ? <span className="text-sm text-ink-3">{t.wish.hiddenMsg}</span> : g.msg ? `“${g.msg}”` : '🎁'}
                 </p>
                 <div className="mt-3 flex items-center justify-between gap-2 text-sm">
                   <span className="truncate font-semibold text-ink-2">

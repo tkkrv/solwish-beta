@@ -100,6 +100,11 @@ export async function handleUpdate(update: {
   const text = update.message?.text || '';
   if (!chatId) return;
   const lang = pickLang(update.message?.from?.language_code);
+  // /id — показать chat id (нужен для TELEGRAM_ADMIN_CHAT_ID, куда приходят заявки от бизнеса).
+  if (/^\/id(@\w+)?$/.test(text.trim())) {
+    await sendMessage(chatId, `Chat id: <code>${chatId}</code>`);
+    return;
+  }
   const m = text.match(/^\/start\s+([A-Za-z0-9]{24})$/);
   if (!m) {
     await sendMessage(chatId, T[lang].hello);

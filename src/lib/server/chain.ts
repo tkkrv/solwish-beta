@@ -9,6 +9,8 @@ import {
 import { MEMO_PROGRAM_ID, RPC_URL } from '../config';
 import { isThanksMemo, isWishMemo, parseSolWishMemo, type SolWishMemo } from '../memo';
 import type { Gift, GiftsSummary, GreetingCard, SentGift, ThankYou, Wish } from '../types';
+import { isClean } from '../moderation';
+import { PREMIUM_LAMPORTS, TREASURY, isPremiumStyle } from '../premium';
 
 let connection: Connection | null = null;
 export function getConnection() {
@@ -31,6 +33,17 @@ function systemTransfers(tx: ParsedTransactionWithMeta): ParsedTransfer[] {
     }
   }
   return out;
+}
+
+/** Перевод-подарок (а не оплата премиум-открытки в кошелёк SolWish). */
+function giftTransfer(transfers: ParsedTransfer[], from?: string): ParsedTransfer | undefined {
+  return transfers.find((t) => t.destination !== TREASURY && (!from || t.source === from)) ?? (TREASURY ? undefined : transfers[0]);
+}
+
+/** Премиум-стиль из memo засчитываем, только если в этой же транзакции есть оплата в кошелёк SolWish. */
+function paidStyle(memoStyle: unknown, transfers: ParsedTransfer[]): string | null {
+  if (!TREASURY || !isPremiumStyle(memoStyle)) return null;
+  return transfers.some((t) => t.destination === TREASURY && t.lamports >= PREMIUM_LAMPORTS) ? memoStyle : null;
 }
 
 function memoFromTx(tx: ParsedTransactionWithMeta): SolWishMemo | null {
@@ -88,16 +101,20 @@ export async function getWishGifts(wish: Wish): Promise<GiftsSummary> {
       .filter((t) => t.destination === wish.recipientWallet)
       .reduce((sum, t) => sum + t.lamports, 0);
     if (!lamports) continue;
+    // Memo может записать кто угодно (в обход сайта), поэтому грубые тексты и ссылки скрываем при показе.
+    const clean = isClean(memo.msg, memo.from);
     gifts.push({
       signature: info.signature,
-      from: memo.a ? '' : memo.from.slice(0, 64),
-      msg: memo.msg.slice(0, 400),
+      from: memo.a || !clean ? '' : memo.from.slice(0, 64),
+      msg: clean ? memo.msg.slice(0, 400) : '',
       amountSol: lamports / LAMPORTS_PER_SOL,
-      sender: transfers[0]?.source || '',
+      sender: giftTransfer(transfers)?.source || transfers[0]?.source || '',
       blockTime: info.blockTime ?? null,
       anonymous: memo.a === 1,
       itemId: typeof memo.i === 'string' ? memo.i : null,
       fiat: typeof memo.f === 'number' ? memo.f : null,
+      hidden: !clean,
+      style: paidStyle(memo.s, transfers),
     });
   }
 
@@ -124,16 +141,20 @@ export async function getGreetingCard(signature: string): Promise<GreetingCard |
   if (!tx || tx.meta?.err) return null;
 
   const memo = memoFromTx(tx);
-  const transfer = systemTransfers(tx)[0];
+  const transfers = systemTransfers(tx);
+  const transfer = giftTransfer(transfers);
   if (!memo || !transfer || isThanksMemo(memo)) return null;
   const wishMemo = isWishMemo(memo) ? memo : null;
+  const clean = isClean(memo.msg, memo.from);
 
   return {
     signature,
     kind: wishMemo ? 'wish' : 'link',
     wishId: wishMemo ? wishMemo.wishId : null,
-    from: wishMemo?.a ? '' : memo.from.slice(0, 64),
-    msg: memo.msg.slice(0, 400),
+    from: wishMemo?.a || !clean ? '' : memo.from.slice(0, 64),
+    msg: clean ? memo.msg.slice(0, 400) : '',
+    hidden: !clean,
+    style: wishMemo ? paidStyle(wishMemo.s, transfers) : null,
     anonymous: wishMemo?.a === 1,
     amountSol: transfer.lamports / LAMPORTS_PER_SOL,
     sender: transfer.source,
@@ -174,13 +195,13 @@ export async function getSentGifts(wallet: string): Promise<SentGift[]> {
   const sent: SentGift[] = [];
   for (const { info, tx } of await fetchParsed(ours, 50)) {
     const memo = parseSolWishMemo(info.memo);
-    const transfer = systemTransfers(tx).find((t) => t.source === wallet);
+    const transfer = giftTransfer(systemTransfers(tx), wallet);
     if (!memo || !transfer || isThanksMemo(memo)) continue;
     sent.push({
       signature: info.signature,
       wishId: isWishMemo(memo) ? memo.wishId : null,
       kind: isWishMemo(memo) ? 'wish' : 'link',
-      msg: memo.msg.slice(0, 200),
+      msg: isClean(memo.msg) ? memo.msg.slice(0, 200) : '',
       amountSol: transfer.lamports / LAMPORTS_PER_SOL,
       recipient: transfer.destination,
       blockTime: info.blockTime ?? null,

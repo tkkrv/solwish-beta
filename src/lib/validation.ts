@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { LIMITS } from './config';
 import { COVER_PRESETS } from './covers';
 import { CURRENCIES } from './types';
+import { PREMIUM_STYLES } from './premium';
 
 export function isValidSolanaAddress(value: string): boolean {
   try {
@@ -119,6 +120,10 @@ export const giftParamsSchema = z.object({
     .string()
     .optional()
     .transform((v) => v === '1' || v === 'true'),
+  style: z
+    .enum(PREMIUM_STYLES)
+    .optional()
+    .or(z.literal('').transform(() => undefined)),
 });
 
 export const wishIdSchema = z.string().regex(/^wish_[A-Za-z0-9_-]{5,32}$/);

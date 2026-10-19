@@ -9,6 +9,7 @@ import {
 } from '@solana/web3.js';
 import { GIFT_TX_COMPUTE_UNITS, LIMITS, MEMO_PROGRAM_ID } from '../config';
 import { buildWishMemo } from '../memo';
+import { PREMIUM_ENABLED, PREMIUM_LAMPORTS, TREASURY, isPremiumStyle } from '../premium';
 import { utf8Bytes } from '../validation';
 import { getConnection } from './chain';
 import type { Wish } from '../types';
@@ -29,6 +30,8 @@ export async function buildGiftTransaction(opts: {
   anonymous?: boolean;
   /** Сумма в валюте вишлиста по текущему курсу (для фиатных вишлистов). */
   fiatValue?: number | null;
+  /** Премиум-открытка: + отдельный перевод в кошелёк SolWish в этой же транзакции. */
+  style?: string | null;
 }) {
   const { wish, sender, amountSol } = opts;
   if (wish.closed) throw new GiftInputError('closed');
@@ -38,10 +41,13 @@ export async function buildGiftTransaction(opts: {
     throw new GiftInputError('invalid_amount');
   }
 
+  const premium =
+    PREMIUM_ENABLED && isPremiumStyle(opts.style) && TREASURY !== wish.recipientWallet ? opts.style : null;
   const memo = buildWishMemo(wish.id, opts.senderName, opts.message, {
     itemId,
     fiat: wish.goalCurrency === 'SOL' ? null : opts.fiatValue,
     anonymous: opts.anonymous,
+    style: premium,
   });
   if (utf8Bytes(memo) > LIMITS.memoMaxBytes) {
     throw new GiftInputError('memo_too_long');
@@ -56,6 +62,9 @@ export async function buildGiftTransaction(opts: {
     // Memo с кириллицей может съесть больше стандартных 200k compute units.
     ComputeBudgetProgram.setComputeUnitLimit({ units: GIFT_TX_COMPUTE_UNITS }),
     SystemProgram.transfer({ fromPubkey: sender, toPubkey: recipient, lamports }),
+    ...(premium
+      ? [SystemProgram.transfer({ fromPubkey: sender, toPubkey: new PublicKey(TREASURY), lamports: PREMIUM_LAMPORTS })]
+      : []),
     new TransactionInstruction({
       keys: [{ pubkey: sender, isSigner: true, isWritable: false }],
       programId: MEMO_PROGRAM_ID,
@@ -63,5 +72,5 @@ export async function buildGiftTransaction(opts: {
     })
   );
 
-  return { transaction: tx, memo, lastValidBlockHeight };
+  return { transaction: tx, memo, lastValidBlockHeight, premium };
 }

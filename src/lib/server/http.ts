@@ -12,7 +12,9 @@ export type ApiErrorCode =
   | 'invalid_amount'
   | 'invalid_account'
   | 'forbidden'
-  | 'price_unavailable';
+  | 'price_unavailable'
+  | 'moderation'
+  | 'ai_disabled';
 
 export function apiError(
   code: ApiErrorCode,

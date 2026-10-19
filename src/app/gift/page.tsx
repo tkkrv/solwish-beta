@@ -10,6 +10,7 @@ import { fmt } from '@/i18n';
 import { CLAIM_FEE_LAMPORTS, LIMITS } from '@/lib/config';
 import { formatSol } from '@/lib/amounts';
 import { buildLinkMemo } from '@/lib/memo';
+import { checkText } from '@/lib/moderation';
 import { utf8Bytes } from '@/lib/validation';
 import {
   buildFundTransaction,
@@ -82,6 +83,7 @@ export default function GiftLinkPage() {
   const amountValid =
     Number.isFinite(amountNum) && amountNum >= LIMITS.minLinkSol && amountNum <= LIMITS.maxLinkSol;
   const memoTooLong = utf8Bytes(buildLinkMemo(from.trim(), message.trim())) > LIMITS.memoMaxBytes;
+  const textCheck = checkText(`${from} ${message}`);
 
   const create = async () => {
     if (!publicKey) {
@@ -260,13 +262,18 @@ export default function GiftLinkPage() {
                 placeholder={l.messagePh}
                 onChange={(e) => setMessage(e.target.value)}
               />
+              {!textCheck.ok && (
+                <p role="alert" className="mt-1.5 text-xs font-semibold text-danger">
+                  {textCheck.reason === 'link' ? t.wish.modLink : t.wish.modProfanity}
+                </p>
+              )}
               <p className="mt-1.5 text-xs text-ink-3">{t.wish.publicNote}</p>
             </div>
 
             {connected ? (
               <button
                 type="button"
-                disabled={busy || !amountValid || memoTooLong}
+                disabled={busy || !amountValid || memoTooLong || !textCheck.ok}
                 onClick={create}
                 className="btn-primary w-full py-3.5 text-base"
               >

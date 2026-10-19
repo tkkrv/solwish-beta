@@ -7,6 +7,14 @@ import { getSiteUrl } from '@/lib/server/site';
 import { dictionaries, fmt, LOCALE_COOKIE, resolveLocale } from '@/i18n';
 import { formatSol } from '@/lib/amounts';
 import { shortAddress } from '@/lib/config';
+import { isPremiumStyle } from '@/lib/premium';
+
+const BACKGROUNDS = {
+  default: 'linear-gradient(160deg, #9945FF 0%, #7C3AED 45%, #14F195 100%)',
+  aurora: 'linear-gradient(160deg, #14F195 0%, #9945FF 50%, #FF7AC6 100%)',
+  confetti: 'linear-gradient(160deg, #FF7AC6 0%, #F59E0B 50%, #14F195 100%)',
+  gold: 'linear-gradient(160deg, #F7D774 0%, #B8860B 55%, #F7D774 100%)',
+} as const;
 
 /** Открытка для Stories (1080×1920 PNG) — чтобы поделиться в Instagram/Telegram. */
 export async function GET(_req: Request, ctx: RouteContext<'/card/[signature]/story'>) {
@@ -24,7 +32,8 @@ export async function GET(_req: Request, ctx: RouteContext<'/card/[signature]/st
   const t = dictionaries[resolveLocale(cookieStore.get(LOCALE_COOKIE)?.value, headerStore.get('accept-language'))];
   const to = wish?.creatorName || shortAddress(card.recipient);
   const from = card.anonymous ? t.wish.anonymousLabel : card.from || t.wish.anonymous;
-  const msg = card.msg || '🎁';
+  const msg = card.hidden ? t.wish.hiddenMsg : card.msg || '🎁';
+  const background = BACKGROUNDS[isPremiumStyle(card.style) ? card.style : 'default'];
   const size = msg.length > 110 ? 58 : msg.length > 60 ? 70 : 84;
 
   return new ImageResponse(
@@ -36,7 +45,7 @@ export async function GET(_req: Request, ctx: RouteContext<'/card/[signature]/st
           display: 'flex',
           flexDirection: 'column',
           padding: 90,
-          background: 'linear-gradient(160deg, #9945FF 0%, #7C3AED 45%, #14F195 100%)',
+          background,
           fontFamily: 'Inter',
         }}
       >

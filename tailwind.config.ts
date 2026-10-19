@@ -63,9 +63,14 @@ const config: Config = {
           from: { opacity: '0', transform: 'translateY(6px)' },
           to: { opacity: '1', transform: 'translateY(0)' },
         },
+        aurora: {
+          '0%, 100%': { backgroundPosition: '0% 50%' },
+          '50%': { backgroundPosition: '100% 50%' },
+        },
       },
       animation: {
         'fade-up': 'fade-up 0.25s ease-out both',
+        aurora: 'aurora 8s ease-in-out infinite',
       },
     },
   },

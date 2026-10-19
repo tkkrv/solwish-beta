@@ -25,6 +25,18 @@ export default function SiteFooter() {
           <Link href="/my" className="hover:text-ink">
             {t.nav.myWishes}
           </Link>
+          <Link href="/pricing" className="hover:text-ink">
+            {t.nav.pricing}
+          </Link>
+          <Link href="/pricing#business" className="hover:text-ink">
+            {t.pricing.bizTitle}
+          </Link>
+          <Link href="/terms" className="hover:text-ink">
+            {t.legal.terms}
+          </Link>
+          <Link href="/privacy" className="hover:text-ink">
+            {t.legal.privacy}
+          </Link>
           <a
             href={TELEGRAM_BOT_URL}
             target="_blank"
