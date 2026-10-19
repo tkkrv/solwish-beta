@@ -32,6 +32,15 @@ export const en = {
     howTo: 'Switch your wallet to Devnet',
   },
   home: {
+    aiTitle: "AI inside SolWish",
+    aiSubtitle: "Artificial intelligence helps you write greetings and protects cards that stay on the blockchain forever.",
+    ai1Title: "Greeting card helper",
+    ai1Desc: "Three greeting ideas for the occasion, tone and language — English, Russian or Kazakh. You edit the text and send it yourself.",
+    ai2Title: "AI moderation",
+    ai2Desc: "Wishlists and cards are checked for insults, scams and phishing links before the text reaches the blockchain.",
+    ai3Title: "AI covers and smart wishlists",
+    ai3Desc: "A cover from a short description and a ready wish list from one phrase like “my son’s 5th birthday”.",
+    aiSoon: "Soon",
     rotating: [
       "Flowers fade.",
       "Gift cards expire.",
@@ -68,7 +77,7 @@ export const en = {
       'Collect gifts in crypto with a single link. Friends send SOL directly to your wallet and leave a greeting card that lives on the blockchain forever.',
     ctaWish: 'Create a wishlist',
     ctaLink: 'Send a gift link',
-    note: 'No sign-up · 0% platform fee · 1 minute',
+    note: 'No sign-up · 0% platform fee · AI greeting helper',
     productsTitle: 'Two ways to gift',
     wishTitle: 'Wishlist',
     wishDesc:

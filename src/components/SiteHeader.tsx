@@ -22,7 +22,7 @@ export default function SiteHeader() {
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-3 px-4">
         <div className="flex items-center gap-6">
           <Logo />
-          <nav className="hidden items-center gap-1 md:flex">
+          <nav className="hidden items-center gap-1 lg:flex">
             {links.map((l) => (
               <Link
                 key={l.href}
@@ -44,7 +44,7 @@ export default function SiteHeader() {
         </div>
       </div>
       {/* Мобильная навигация */}
-      <div className="flex items-center justify-between gap-2 border-t border-line/60 px-4 py-2 md:hidden">
+      <div className="flex items-center justify-between gap-2 border-t border-line/60 px-4 py-2 lg:hidden">
         <nav className="-mx-1 flex min-w-0 gap-0.5 overflow-x-auto px-1 [scrollbar-width:none]">
           {links.map((l) => (
             <Link

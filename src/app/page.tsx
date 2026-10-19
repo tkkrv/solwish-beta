@@ -10,6 +10,7 @@ import {
   ShieldCheck,
   Smartphone,
   Sparkles,
+  Wand2,
   Zap,
 } from 'lucide-react';
 import { useLanguage } from '@/i18n/LanguageProvider';
@@ -80,10 +81,6 @@ export default function HomePage() {
       {/* Hero */}
       <section className="mx-auto grid max-w-6xl items-center gap-14 px-4 pb-24 pt-12 md:grid-cols-[1.1fr_1fr] md:pt-20">
         <div className="animate-fade-up">
-          <span className="chip mb-6">
-            <span className="h-1.5 w-1.5 rounded-full bg-[#14F195]" />
-            {h.badge}
-          </span>
           <h1 className="text-[2.6rem] font-extrabold leading-[1.05] tracking-tight sm:text-6xl">
             {/* Для поисковиков и экранных дикторов — неподвижный слоган; визуально первая половина меняется. */}
             <span className="sr-only">{h.titleA} </span>
@@ -163,6 +160,36 @@ export default function HomePage() {
               <p className="mt-1.5 text-sm leading-relaxed text-ink-2">{f.desc}</p>
             </div>
           ))}
+        </div>
+      </section>
+
+      {/* AI */}
+      <section id="ai" className="mx-auto max-w-6xl px-4 pb-20">
+        <div className="rounded-[1.75rem] bg-ink p-6 text-white sm:p-10">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-xs font-bold uppercase tracking-wider text-[#14F195]">
+            <Sparkles className="h-3.5 w-3.5" />
+            AI
+          </span>
+          <h2 className="mt-4 text-2xl font-extrabold tracking-tight sm:text-3xl">{h.aiTitle}</h2>
+          <p className="mt-2 max-w-2xl leading-relaxed text-white/70">{h.aiSubtitle}</p>
+          <div className="mt-8 grid gap-4 md:grid-cols-3">
+            {[
+              { icon: Sparkles, title: h.ai1Title, desc: h.ai1Desc, soon: false },
+              { icon: ShieldCheck, title: h.ai2Title, desc: h.ai2Desc, soon: false },
+              { icon: Wand2, title: h.ai3Title, desc: h.ai3Desc, soon: true },
+            ].map((f) => (
+              <div key={f.title} className="rounded-2xl border border-white/10 bg-white/5 p-5">
+                <div className="flex items-center justify-between gap-2">
+                  <f.icon className="h-6 w-6 text-[#14F195]" />
+                  {f.soon && (
+                    <span className="rounded-full bg-white/10 px-2.5 py-0.5 text-xs font-semibold text-white/70">{h.aiSoon}</span>
+                  )}
+                </div>
+                <h3 className="mt-4 font-bold">{f.title}</h3>
+                <p className="mt-1.5 text-sm leading-relaxed text-white/70">{f.desc}</p>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 
