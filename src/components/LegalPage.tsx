@@ -3,10 +3,10 @@
 import { useLanguage } from '@/i18n/LanguageProvider';
 import { fmt } from '@/i18n';
 import { LEGAL, LEGAL_UPDATED } from '@/content/legal';
-import { TELEGRAM_BOT_URL } from '@/lib/config';
+import { SUPPORT_EMAIL, TELEGRAM_BOT_URL } from '@/lib/config';
 import { dateLocale } from '@/lib/client/format';
 
-const CONTACT_EMAIL = process.env.NEXT_PUBLIC_CONTACT_EMAIL || '';
+const CONTACT_EMAIL = SUPPORT_EMAIL;
 
 export default function LegalPage({ kind }: { kind: 'terms' | 'privacy' }) {
   const { t, locale } = useLanguage();

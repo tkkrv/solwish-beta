@@ -25,6 +25,12 @@ export default function SiteFooter() {
           <Link href="/my" className="hover:text-ink">
             {t.nav.myWishes}
           </Link>
+          <Link href="/demo" className="hover:text-ink">
+            {t.nav.demo}
+          </Link>
+          <Link href="/#about" className="hover:text-ink">
+            {t.nav.about}
+          </Link>
           <Link href="/pricing" className="hover:text-ink">
             {t.nav.pricing}
           </Link>

@@ -15,6 +15,7 @@ export default function SiteHeader() {
     { href: '/gift', label: t.nav.giftLink },
     { href: '/my', label: t.nav.myWishes },
     { href: '/pricing', label: t.nav.pricing },
+    { href: '/demo', label: t.nav.demo },
   ];
 
   return (

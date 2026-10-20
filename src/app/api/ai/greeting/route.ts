@@ -11,6 +11,9 @@ const body = z.object({
   lang: z.enum(['ru', 'kk', 'en']).default('ru'),
   tone: z.enum(TONES).default('warm'),
   draft: z.string().max(LIMITS.messageMax).optional().default(''),
+  // Для демо-страницы (вишлиста нет в базе): повод и имя приходят прямо в запросе.
+  occasion: z.string().max(120).optional().default(''),
+  recipient: z.string().max(LIMITS.nameMax).optional().default(''),
 });
 
 /** Помощник открытки: три варианта поздравления под вишлист, язык и тон. */
@@ -22,15 +25,15 @@ export async function POST(req: Request) {
   }
   const parsed = body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return apiError('invalid_input', 400);
-  const { wishId, lang, tone, draft } = parsed.data;
+  const { wishId, lang, tone, draft, occasion, recipient } = parsed.data;
 
   const wish = wishId ? await getWish(wishId).catch(() => null) : null;
   try {
     const options = await suggestGreetings({
       lang,
       tone,
-      occasion: wish ? `${wish.title}${wish.description ? ` — ${wish.description.slice(0, 160)}` : ''}` : '',
-      recipient: wish?.creatorName || '',
+      occasion: wish ? `${wish.title}${wish.description ? ` — ${wish.description.slice(0, 160)}` : ''}` : occasion,
+      recipient: wish?.creatorName || recipient,
       draft,
     });
     if (!options.length) return apiError('server_error', 502);

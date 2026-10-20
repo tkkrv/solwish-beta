@@ -17,6 +17,10 @@ export const MEMO_PROGRAM_ID = new PublicKey(
 
 export const APP_NAME = 'SolWish';
 export const TELEGRAM_BOT_URL = 'https://t.me/Sol_Wish_bot';
+/** Почта для пользователей (страницы «Условия», «Конфиденциальность», «О проекте»). */
+export const SUPPORT_EMAIL = process.env.NEXT_PUBLIC_CONTACT_EMAIL || 'support@solwish.com';
+/** Почта основателя: партнёрства и инвесторы. */
+export const FOUNDER_EMAIL = process.env.NEXT_PUBLIC_FOUNDER_EMAIL || 'founder@solwish.com';
 export const FAUCET_URL = 'https://faucet.solana.com';
 
 /** Лимиты, которые проверяются и в форме, и на сервере. */

@@ -51,6 +51,7 @@ export default function GiftPanel({
   onSent,
   price = null,
   perItem = {},
+  demo = false,
 }: {
   wish: Wish;
   remaining: number;
@@ -58,6 +59,8 @@ export default function GiftPanel({
   /** Курс SOL в валюте вишлиста (для фиатных вишлистов). */
   price?: number | null;
   perItem?: Record<string, number>;
+  /** Демо без кошелька: всё работает (AI, проверка, оформление), но вместо транзакции — имитация. */
+  demo?: boolean;
 }) {
   const { t } = useLanguage();
   const w = t.wish;
@@ -68,7 +71,7 @@ export default function GiftPanel({
 
   const { locale } = useLanguage();
   // Если получатель вишлиста — сам кошелёк SolWish, премиум не предлагаем (платить самому себе бессмысленно).
-  const PREMIUM_ENABLED = PREMIUM_ON && wish.recipientWallet !== TREASURY;
+  const PREMIUM_ENABLED = demo || (PREMIUM_ON && wish.recipientWallet !== TREASURY);
   const fiat = isFiat(wish.goalCurrency) && !!price;
   const money = (v: number) => formatMoney(v, wish.goalCurrency, dateLocale(locale));
 
@@ -136,7 +139,11 @@ export default function GiftPanel({
       const { options } = await fetchJson<{ options: string[] }>('/api/ai/greeting', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ wishId: wish.id, lang: locale, tone, draft: message.trim() }),
+        body: JSON.stringify(
+          demo
+            ? { occasion: wish.title, recipient: wish.creatorName, lang: locale, tone, draft: message.trim() }
+            : { wishId: wish.id, lang: locale, tone, draft: message.trim() }
+        ),
       });
       setAiOptions(options);
     } catch (err) {
@@ -144,6 +151,31 @@ export default function GiftPanel({
       toast(/rate_limited/.test(m) ? t.errors.rateLimited : w.aiError);
     } finally {
       setAiBusy(null);
+    }
+  };
+
+  // ---------- Демо: те же проверки, но без транзакции ----------
+  const sendDemo = async () => {
+    if (!amountValid || memoTooLong || !textCheck.ok) return;
+    setStatus('confirming');
+    try {
+      if (aiEnabled && message.trim()) {
+        const mod = await fetchJson<{ ok: boolean }>('/api/ai/moderate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ texts: [name.trim(), message.trim()] }),
+        }).catch(() => ({ ok: true }));
+        if (!mod.ok) {
+          toast(w.modAi);
+          return;
+        }
+      }
+      await new Promise((r) => setTimeout(r, 900));
+      setSentStyle(cardStyle);
+      setSignature('demo');
+      celebrate();
+    } finally {
+      setStatus('idle');
     }
   };
 
@@ -231,7 +263,7 @@ export default function GiftPanel({
       : '';
 
   useEffect(() => {
-    if (tab !== 'phone' || !payUrl || signature) return;
+    if (demo || tab !== 'phone' || !payUrl || signature) return;
     let stopped = false;
     const ref = new PublicKey(reference);
     const timer = setInterval(async () => {
@@ -253,7 +285,7 @@ export default function GiftPanel({
       stopped = true;
       clearInterval(timer);
     };
-  }, [tab, payUrl, reference, signature, connection, onSent]);
+  }, [demo, tab, payUrl, reference, signature, connection, onSent]);
 
   // ---------- Успех ----------
   if (signature) {
@@ -266,7 +298,7 @@ export default function GiftPanel({
           </div>
           <div>
             <h2 className="text-lg font-extrabold">{w.successTitle}</h2>
-            <p className="text-sm text-ink-2">{w.successDesc}</p>
+            <p className="text-sm text-ink-2">{demo ? t.demo.sentDesc : w.successDesc}</p>
           </div>
         </div>
         <div className={`rounded-2xl ${sentStyle ? `${STYLE_CLASSES[sentStyle].frame}` : 'p-0'}`}>
@@ -286,17 +318,23 @@ export default function GiftPanel({
           </div>
         </div>
         </div>
-        <div className="mt-4 grid gap-2">
-          <Link href={`/card/${signature}`} className="btn-primary">
-            {w.viewCard}
-          </Link>
-          <a href={explorerTxUrl(signature)} target="_blank" rel="noopener noreferrer" className="btn-secondary">
-            <ExternalLink className="h-4 w-4" />
-            {w.viewExplorer}
-          </a>
-        </div>
-        <p className="mb-2 mt-5 text-sm font-semibold text-ink-2">{w.shareCard}</p>
-        <ShareRow url={cardUrl} text={`🎁 ${wish.title}`} />
+        {demo ? (
+          <p className="mt-4 rounded-xl bg-brand-soft px-4 py-3 text-sm text-brand">{t.demo.sentNote}</p>
+        ) : (
+          <>
+            <div className="mt-4 grid gap-2">
+              <Link href={`/card/${signature}`} className="btn-primary">
+                {w.viewCard}
+              </Link>
+              <a href={explorerTxUrl(signature)} target="_blank" rel="noopener noreferrer" className="btn-secondary">
+                <ExternalLink className="h-4 w-4" />
+                {w.viewExplorer}
+              </a>
+            </div>
+            <p className="mb-2 mt-5 text-sm font-semibold text-ink-2">{w.shareCard}</p>
+            <ShareRow url={cardUrl} text={`🎁 ${wish.title}`} />
+          </>
+        )}
         <button
           type="button"
           onClick={() => {
@@ -539,6 +577,21 @@ export default function GiftPanel({
         </fieldset>
       )}
 
+      {demo ? (
+        <div className="mt-5 space-y-2">
+          <button
+            type="button"
+            disabled={busy || !canSend}
+            onClick={sendDemo}
+            className="btn-primary w-full py-3.5 text-base"
+          >
+            {busy ? <Spinner /> : <Gift className="h-5 w-5" />}
+            {busy ? w.confirming : fmt(cardStyle ? w.sendPremium : w.send, { amount: amountValid ? formatSol(amountNum) : '—' })}
+          </button>
+          <p className="text-center text-xs text-ink-3">{t.demo.sendNote}</p>
+        </div>
+      ) : (
+      <>
       {/* Способ оплаты */}
       <div role="tablist" className="mt-5 grid grid-cols-2 rounded-xl bg-canvas p-1">
         {(
@@ -648,6 +701,8 @@ export default function GiftPanel({
             </p>
           )}
         </div>
+      )}
+      </>
       )}
     </div>
   );

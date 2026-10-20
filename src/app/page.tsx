@@ -9,12 +9,17 @@ import {
   Link2,
   ShieldCheck,
   Smartphone,
+  FlaskConical,
+  Mail,
+  MapPin,
+  Send,
   Sparkles,
   Wand2,
   Zap,
 } from 'lucide-react';
 import { useLanguage } from '@/i18n/LanguageProvider';
 import Progress from '@/components/ui/Progress';
+import { FOUNDER_EMAIL, SUPPORT_EMAIL, TELEGRAM_BOT_URL } from '@/lib/config';
 import RotatingSlogan from '@/components/RotatingSlogan';
 
 function HeroPreview() {
@@ -99,6 +104,14 @@ export default function HomePage() {
             </Link>
           </div>
           <p className="mt-4 text-sm text-ink-3">{h.note}</p>
+          <Link
+            href="/demo"
+            className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-brand hover:text-brand-strong"
+          >
+            <FlaskConical className="h-4 w-4" />
+            {t.demo.cta} · {t.demo.ctaNoWallet}
+            <ArrowRight className="h-4 w-4" />
+          </Link>
         </div>
         <HeroPreview />
       </section>
@@ -189,6 +202,66 @@ export default function HomePage() {
                 <p className="mt-1.5 text-sm leading-relaxed text-white/70">{f.desc}</p>
               </div>
             ))}
+          </div>
+          <Link href="/demo" className="btn mt-8 bg-white px-5 py-3 text-ink hover:bg-white/90">
+            <FlaskConical className="h-4 w-4" />
+            {t.demo.cta}
+            <ArrowRight className="h-4 w-4" />
+          </Link>
+        </div>
+      </section>
+
+      {/* About */}
+      <section id="about" className="mx-auto max-w-6xl scroll-mt-24 px-4 pb-20">
+        <div className="grid gap-5 lg:grid-cols-[1.4fr_1fr]">
+          <div className="card p-6 sm:p-8">
+            <h2 className="text-2xl font-extrabold tracking-tight sm:text-3xl">{t.about.title}</h2>
+            <p className="mt-4 leading-relaxed text-ink-2">{t.about.p1}</p>
+            <p className="mt-3 leading-relaxed text-ink-2">{t.about.p2}</p>
+            <ul className="mt-5 flex flex-wrap gap-2">
+              {t.about.facts.map((f, i) => (
+                <li key={f} className="chip">
+                  {i === 0 && <MapPin className="h-3.5 w-3.5 text-brand" />}
+                  {f}
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div className="card flex flex-col gap-5 p-6 sm:p-8">
+            <div className="flex items-center gap-4">
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-sol-gradient text-xl font-extrabold text-white">
+                {t.about.founderName.slice(0, 1)}
+              </div>
+              <div>
+                <p className="text-lg font-bold">{t.about.founderName}</p>
+                <p className="text-sm text-ink-3">{t.about.founderRole} · SolWish</p>
+              </div>
+            </div>
+            <div className="space-y-3 text-sm">
+              <div>
+                <p className="text-ink-3">{t.about.partners}</p>
+                <a href={`mailto:${FOUNDER_EMAIL}`} className="inline-flex items-center gap-1.5 font-semibold text-brand hover:text-brand-strong">
+                  <Mail className="h-4 w-4" />
+                  {FOUNDER_EMAIL}
+                </a>
+              </div>
+              <div>
+                <p className="text-ink-3">{t.about.support}</p>
+                <a href={`mailto:${SUPPORT_EMAIL}`} className="inline-flex items-center gap-1.5 font-semibold text-brand hover:text-brand-strong">
+                  <Mail className="h-4 w-4" />
+                  {SUPPORT_EMAIL}
+                </a>
+              </div>
+              <a
+                href={TELEGRAM_BOT_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 font-semibold text-ink-2 hover:text-ink"
+              >
+                <Send className="h-4 w-4" />
+                {h.telegram}
+              </a>
+            </div>
           </div>
         </div>
       </section>

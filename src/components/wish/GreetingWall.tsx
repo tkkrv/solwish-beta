@@ -25,10 +25,13 @@ export default function GreetingWall({
   gifts,
   wish,
   price = null,
+  demo = false,
 }: {
   gifts: Gift[] | null;
   wish?: Wish;
   price?: number | null;
+  /** На демо-странице открытки не настоящие — ссылки ведут к форме подарка. */
+  demo?: boolean;
 }) {
   const { t, locale } = useLanguage();
 
@@ -53,7 +56,7 @@ export default function GreetingWall({
           {gifts.map((g) => (
             <li key={g.signature}>
               <Link
-                href={`/card/${g.signature}`}
+                href={demo ? '#gift' : `/card/${g.signature}`}
                 className={`card flex h-full flex-col p-4 transition hover:-translate-y-0.5 hover:shadow-pop ${
                   isPremiumStyle(g.style) ? `${STYLE_CLASSES[g.style].inner} ${STYLE_CLASSES[g.style].ring}` : ''
                 }`}
