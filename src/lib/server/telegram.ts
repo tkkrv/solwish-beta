@@ -4,6 +4,7 @@ import { getSupabase } from './supabase';
 import { formatSol } from '../amounts';
 import { formatMoney } from '../money';
 import { computeProgress } from '../progress';
+import { T, esc, pickLang } from './telegram-texts';
 import type { Gift, Wish } from '../types';
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '';
@@ -12,25 +13,49 @@ export const TELEGRAM_ENABLED = Boolean(BOT_TOKEN && BOT_USERNAME);
 
 const newToken = customAlphabet('0123456789abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ', 24);
 
-async function tg(method: string, payload: Record<string, unknown>) {
+export type Button = { text: string; url?: string; callback_data?: string; switch_inline_query?: string };
+export type Keyboard = Button[][];
+
+/** Вызов Bot API. Возвращает result или null при ошибке (ошибки только логируем). */
+export async function tg<R = unknown>(method: string, payload: Record<string, unknown>): Promise<R | null> {
   if (!BOT_TOKEN) return null;
   const api = process.env.TELEGRAM_API_URL || 'https://api.telegram.org';
-  const res = await fetch(`${api}/bot${BOT_TOKEN}/${method}`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify(payload),
-    signal: AbortSignal.timeout(5000),
-  });
-  if (!res.ok) console.error('[telegram]', method, res.status, await res.text().catch(() => ''));
-  return res.ok;
+  try {
+    const res = await fetch(`${api}/bot${BOT_TOKEN}/${method}`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(8000),
+    });
+    const data = (await res.json().catch(() => null)) as { ok?: boolean; result?: R; description?: string } | null;
+    if (!res.ok || !data?.ok) {
+      console.error('[telegram]', method, res.status, data?.description || '');
+      return null;
+    }
+    return (data.result ?? true) as R;
+  } catch (err) {
+    console.error('[telegram]', method, (err as Error).message);
+    return null;
+  }
 }
 
-export function sendMessage(chatId: number, text: string) {
+/** Telegram не принимает кнопки-ссылки на http://localhost — в разработке отправляем без них. */
+const publicUrl = (url: string) => /^https:\/\//.test(url);
+
+export function keyboard(rows: Keyboard): { inline_keyboard: Keyboard } | undefined {
+  const clean = rows
+    .map((row) => row.filter((b) => !b.url || publicUrl(b.url)))
+    .filter((row) => row.length);
+  return clean.length ? { inline_keyboard: clean } : undefined;
+}
+
+export function sendMessage(chatId: number, text: string, rows?: Keyboard, preview = false) {
   return tg('sendMessage', {
     chat_id: chatId,
     text,
     parse_mode: 'HTML',
-    link_preview_options: { is_disabled: false },
+    link_preview_options: { is_disabled: !preview },
+    reply_markup: rows ? keyboard(rows) : undefined,
   });
 }
 
@@ -55,78 +80,24 @@ export async function unlink(wallet: string) {
   if (error) throw error;
 }
 
-const T = {
-  ru: {
-    linked: '✅ Готово! Буду присылать сюда уведомления о подарках на кошелёк',
-    bad: 'Ссылка устарела. Откройте «Мои вишлисты» на сайте и нажмите «Подключить Telegram» ещё раз.',
-    hello: 'Привет! Это бот SolWish. Подключить уведомления можно на сайте: «Мои вишлисты» → «Подключить Telegram».',
-    gift: (from: string, amount: string, title: string) => `🎁 <b>${from}</b> подарил(а) ${amount} на «${title}»`,
-    anon: 'Аноним',
-    open: 'Открыть открытку',
-    half: (title: string, raised: string, goal: string) => `🙌 Половина собрана: «${title}» — ${raised} из ${goal}`,
-    full: (title: string, raised: string, goal: string) => `🎉 Цель достигнута: «${title}» — ${raised} из ${goal}!`,
-  },
-  kk: {
-    linked: '✅ Дайын! Әмиянға түскен сыйлықтар туралы осында хабарлаймын',
-    bad: 'Сілтеменің мерзімі өтті. Сайттағы «Менің тізімдерім» бөлімінде «Telegram қосу» батырмасын қайта басыңыз.',
-    hello: 'Сәлем! Бұл SolWish боты. Хабарламаларды сайтта қосуға болады: «Менің тізімдерім» → «Telegram қосу».',
-    gift: (from: string, amount: string, title: string) => `🎁 <b>${from}</b> «${title}» үшін ${amount} сыйлады`,
-    anon: 'Аноним',
-    open: 'Ашықхатты ашу',
-    half: (title: string, raised: string, goal: string) => `🙌 Жартысы жиналды: «${title}» — ${goal} ішінен ${raised}`,
-    full: (title: string, raised: string, goal: string) => `🎉 Мақсатқа жеттік: «${title}» — ${goal} ішінен ${raised}!`,
-  },
-  en: {
-    linked: '✅ Done! I will notify you here about gifts to wallet',
-    bad: 'This link has expired. Open “My wishlists” on the website and press “Connect Telegram” again.',
-    hello: 'Hi! This is the SolWish bot. Turn on notifications on the website: “My wishlists” → “Connect Telegram”.',
-    gift: (from: string, amount: string, title: string) => `🎁 <b>${from}</b> sent ${amount} for “${title}”`,
-    anon: 'Anonymous',
-    open: 'Open the card',
-    half: (title: string, raised: string, goal: string) => `🙌 Halfway there: “${title}” — ${raised} of ${goal}`,
-    full: (title: string, raised: string, goal: string) => `🎉 Goal reached: “${title}” — ${raised} of ${goal}!`,
-  },
-};
-type Lang = keyof typeof T;
-const pickLang = (code?: string | null): Lang => (code === 'kk' || code === 'en' ? code : code?.startsWith('kk') ? 'kk' : code?.startsWith('en') ? 'en' : 'ru');
+export type TgLink = { wallet: string; chat_id: number; lang: string; created_at: string };
 
-const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+/** Сумма в валюте цели вишлиста (сейчас всегда SOL). */
+export const money = (wish: Wish, v: number) =>
+  wish.goalCurrency === 'SOL' ? `${formatSol(v)} SOL` : formatMoney(v, wish.goalCurrency);
 
-/** Обработка входящего апдейта бота: /start <token> привязывает чат к кошельку. */
-export async function handleUpdate(update: {
-  message?: { chat?: { id?: number }; text?: string; from?: { language_code?: string } };
-}) {
-  const chatId = update.message?.chat?.id;
-  const text = update.message?.text || '';
-  if (!chatId) return;
-  const lang = pickLang(update.message?.from?.language_code);
-  // /id — показать chat id (нужен для TELEGRAM_ADMIN_CHAT_ID, куда приходят заявки от бизнеса).
-  if (/^\/id(@\w+)?$/.test(text.trim())) {
-    await sendMessage(chatId, `Chat id: <code>${chatId}</code>`);
-    return;
-  }
-  const m = text.match(/^\/start\s+([A-Za-z0-9]{24})$/);
-  if (!m) {
-    await sendMessage(chatId, T[lang].hello);
-    return;
-  }
-  const sb = getSupabase();
-  const { data } = await sb.from('telegram_link_tokens').select('*').eq('token', m[1]).maybeSingle();
-  await sb.from('telegram_link_tokens').delete().eq('token', m[1]);
-  if (!data || Date.parse(data.expires_at) < Date.now()) {
-    await sendMessage(chatId, T[lang].bad);
-    return;
-  }
-  const { error } = await sb
-    .from('telegram_links')
-    .upsert([{ wallet: data.wallet, chat_id: chatId, lang, created_at: new Date().toISOString() }]);
-  if (error) throw error;
-  await sendMessage(chatId, `${T[lang].linked} <code>${data.wallet.slice(0, 4)}…${data.wallet.slice(-4)}</code>`);
-}
+export const wishUrl = (site: string, wish: Wish) => `${site}/w/${wish.id}`;
+
+/** Кнопки «Открыть» и «Поделиться» (поделиться = выбрать чат и вставить карточку вишлиста через inline-режим). */
+export const wishButtons = (site: string, wish: Wish, t: (typeof T)['ru']): Button[] => [
+  { text: t.btnOpen, url: wishUrl(site, wish) },
+  { text: t.btnShare, switch_inline_query: wish.id },
+];
 
 /**
  * Уведомляет получателя (и создателя) о новых подарках.
  * Только подарки после момента привязки Telegram и только один раз (таблица notified_signatures).
+ * Вызывается при открытии страницы вишлиста и по расписанию (/api/cron/telegram).
  */
 export async function notifyNewGifts(wish: Wish, gifts: Gift[], siteUrl: string) {
   if (!TELEGRAM_ENABLED || !gifts.length) return;
@@ -151,19 +122,29 @@ export async function notifyNewGifts(wish: Wish, gifts: Gift[], siteUrl: string)
     .select('signature');
   const mine = new Set((claimed || []).map((c: { signature: string }) => c.signature));
 
+  // Один чат может быть привязан и к получателю, и к создателю — шлём в каждый чат один раз.
+  const chats = new Map<number, TgLink>();
+  for (const l of links as TgLink[]) {
+    const prev = chats.get(l.chat_id);
+    if (!prev || l.wallet === wish.recipientWallet) chats.set(l.chat_id, l);
+  }
+
   for (const g of fresh.filter((x) => mine.has(x.signature))) {
-    for (const link of links as { chat_id: number; lang: string }[]) {
+    for (const link of chats.values()) {
       const t = T[pickLang(link.lang)];
       const amount =
         wish.goalCurrency !== 'SOL' && g.fiat
           ? `${formatMoney(g.fiat, wish.goalCurrency)} (${formatSol(g.amountSol)} SOL)`
           : `${formatSol(g.amountSol)} SOL`;
-      const lines = [
+      const text = [
         t.gift(esc(g.anonymous || !g.from ? t.anon : g.from), amount, esc(wish.title)),
         g.msg ? `\n<i>«${esc(g.msg)}»</i>` : '',
-        `\n<a href="${siteUrl}/card/${g.signature}">${t.open}</a>`,
-      ];
-      await sendMessage(link.chat_id, lines.join(''));
+      ].join('');
+      const card = `${siteUrl}/card/${g.signature}`;
+      // «Спасибо» может отправить только получатель (его кошелёк подписывает ответ).
+      const row: Button[] = [{ text: t.btnCard, url: card }];
+      if (link.wallet === wish.recipientWallet) row.push({ text: t.btnThanks, url: `${card}#thanks` });
+      await sendMessage(link.chat_id, text, [row]);
     }
   }
 
@@ -177,12 +158,10 @@ export async function notifyNewGifts(wish: Wish, gifts: Gift[], siteUrl: string)
   const crossed = (p: number) => before.raised < after.goal * p && after.raised >= after.goal * p;
   const kind = crossed(1) ? 'full' : crossed(0.5) ? 'half' : null;
   if (!kind) return;
-  const money = (v: number) => (wish.goalCurrency === 'SOL' ? `${formatSol(v)} SOL` : formatMoney(v, wish.goalCurrency));
-  for (const link of links as { chat_id: number; lang: string }[]) {
+  for (const link of chats.values()) {
     const t = T[pickLang(link.lang)];
-    await sendMessage(
-      link.chat_id,
-      `${t[kind](esc(wish.title), money(after.raised), money(after.goal))}\n<a href="${siteUrl}/w/${wish.id}">${siteUrl.replace(/^https?:\/\//, '')}/w/${wish.id}</a>`
-    );
+    await sendMessage(link.chat_id, t[kind](esc(wish.title), money(wish, after.raised), money(wish, after.goal)), [
+      wishButtons(siteUrl, wish, t),
+    ]);
   }
 }

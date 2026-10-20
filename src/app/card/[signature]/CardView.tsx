@@ -144,7 +144,7 @@ export default function CardView({
         </div>
       ) : (
         isRecipient && (
-          <div className="card mt-4 p-5">
+          <div id="thanks" className="card mt-4 scroll-mt-24 p-5">
             <p className="field-label">{c.sayThanks}</p>
             <textarea
               rows={2}

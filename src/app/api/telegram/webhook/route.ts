@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
-import { TELEGRAM_ENABLED, handleUpdate } from '@/lib/server/telegram';
+import { TELEGRAM_ENABLED } from '@/lib/server/telegram';
+import { handleUpdate } from '@/lib/server/telegram-bot';
+import { getSiteUrl } from '@/lib/server/site';
 
 /**
  * Webhook бота. Telegram присылает секрет в заголовке X-Telegram-Bot-Api-Secret-Token
@@ -12,7 +14,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false }, { status: 401 });
   }
   try {
-    await handleUpdate(await req.json());
+    await handleUpdate(await req.json(), await getSiteUrl());
   } catch (err) {
     console.error('[telegram webhook]', err);
   }
