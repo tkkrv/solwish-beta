@@ -451,6 +451,7 @@ export const ru: Dictionary = {
     givers: ["Азамат", "Дана", "Ерлан"] as string[],
     cta: "Посмотреть демо",
     ctaNoWallet: "Без кошелька",
+    ctaDesc: "Без кошелька: AI-помощник, открытки и премиум-оформление",
     createOwn: "Создать свой вишлист",
   },
   about: {

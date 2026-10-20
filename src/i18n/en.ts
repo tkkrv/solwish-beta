@@ -447,6 +447,7 @@ export const en = {
     givers: ["Azamat", "Dana", "Yerlan"] as string[],
     cta: "Try the demo",
     ctaNoWallet: "No wallet needed",
+    ctaDesc: "No wallet needed: AI helper, cards and premium designs",
     createOwn: "Create your own wishlist",
   },
   about: {

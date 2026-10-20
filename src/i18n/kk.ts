@@ -451,6 +451,7 @@ export const kk: Dictionary = {
     givers: ["Азамат", "Дана", "Ерлан"] as string[],
     cta: "Демоны көру",
     ctaNoWallet: "Әмиянсыз",
+    ctaDesc: "Әмиянсыз: AI-көмекші, ашықхаттар және премиум безендіру",
     createOwn: "Өз тізіміңізді құру",
   },
   about: {

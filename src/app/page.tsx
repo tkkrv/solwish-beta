@@ -93,25 +93,33 @@ export default function HomePage() {
             <span className="bg-sol-gradient bg-clip-text text-transparent">{h.titleB}</span>
           </h1>
           <p className="mt-5 max-w-xl text-lg leading-relaxed text-ink-2">{h.subtitle}</p>
-          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-            <Link href="/create" className="btn-primary px-6 py-3.5 text-base">
-              <Gift className="h-5 w-5" />
-              {h.ctaWish}
-            </Link>
-            <Link href="/gift" className="btn-secondary px-6 py-3.5 text-base">
-              <Link2 className="h-5 w-5" />
-              {h.ctaLink}
+          {/* Колонка шириной с ряд кнопок: демо-кнопка растягивается ровно под них. */}
+          <div className="mt-8 flex flex-col gap-3 sm:inline-flex">
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <Link href="/create" className="btn-primary px-6 py-3.5 text-base">
+                <Gift className="h-5 w-5" />
+                {h.ctaWish}
+              </Link>
+              <Link href="/gift" className="btn-secondary px-6 py-3.5 text-base">
+                <Link2 className="h-5 w-5" />
+                {h.ctaLink}
+              </Link>
+            </div>
+            <Link
+              href="/demo"
+              className="group flex items-center gap-3 rounded-2xl border-2 border-brand/30 bg-brand-soft px-5 py-3.5 transition hover:border-brand hover:shadow-md"
+            >
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand text-white">
+                <FlaskConical className="h-5 w-5" />
+              </span>
+              <span className="min-w-0 flex-1 text-left">
+                <span className="block text-base font-bold text-brand">{t.demo.cta}</span>
+                <span className="block text-sm text-ink-2">{t.demo.ctaDesc}</span>
+              </span>
+              <ArrowRight className="h-5 w-5 shrink-0 text-brand transition group-hover:translate-x-1" />
             </Link>
           </div>
           <p className="mt-4 text-sm text-ink-3">{h.note}</p>
-          <Link
-            href="/demo"
-            className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-brand hover:text-brand-strong"
-          >
-            <FlaskConical className="h-4 w-4" />
-            {t.demo.cta} · {t.demo.ctaNoWallet}
-            <ArrowRight className="h-4 w-4" />
-          </Link>
         </div>
         <HeroPreview />
       </section>

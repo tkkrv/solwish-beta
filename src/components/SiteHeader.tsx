@@ -46,7 +46,7 @@ export default function SiteHeader() {
       </div>
       {/* Мобильная навигация */}
       <div className="flex items-center justify-between gap-2 border-t border-line/60 px-4 py-2 lg:hidden">
-        <nav className="-mx-1 flex min-w-0 gap-0.5 overflow-x-auto px-1 [scrollbar-width:none]">
+        <nav className="-mx-1 flex min-w-0 gap-0.5 overflow-x-auto px-1 pr-6 [mask-image:linear-gradient(to_right,black_80%,transparent)] [scrollbar-width:none]">
           {links.map((l) => (
             <Link
               key={l.href}
