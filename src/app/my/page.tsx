@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { useWalletModal } from '@solana/wallet-adapter-react-ui';
-import { Download, Gift, Link2, Plus, QrCode as QrIcon, Settings2, Wallet } from 'lucide-react';
+import { ArrowRight, Download, FlaskConical, Gift, Link2, Plus, QrCode as QrIcon, Settings2, Wallet } from 'lucide-react';
 import { useLanguage } from '@/i18n/LanguageProvider';
 import { fmt } from '@/i18n';
 import { formatSol } from '@/lib/amounts';
@@ -145,6 +145,15 @@ export default function MyPage() {
           <button type="button" onClick={() => setVisible(true)} className="btn-primary mt-6 w-full">
             {t.wish.connect}
           </button>
+          {/* Без кошелька — сразу показываем, куда пойти дальше. */}
+          <Link
+            href="/demo"
+            className="btn-secondary mt-3 w-full"
+          >
+            <FlaskConical className="h-4 w-4 text-brand" />
+            {t.demo.cta}
+            <ArrowRight className="h-4 w-4" />
+          </Link>
         </div>
       </div>
     );

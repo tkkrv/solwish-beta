@@ -13,6 +13,7 @@ export const kk: Dictionary = {
     tryAgain: 'Қайта көру',
   },
   wallet: {
+    connectShort: 'Әмиян',
     connect: 'Әмиянды қосу',
     connecting: 'Қосылуда…',
     change: 'Әмиянды ауыстыру',
@@ -21,6 +22,8 @@ export const kk: Dictionary = {
     disconnect: 'Ажырату',
   },
   nav: {
+    menu: 'Мәзір',
+    closeMenu: 'Мәзірді жабу',
     demo: "Демо",
     about: "Біз туралы",
     pricing: "Тарифтер",
@@ -150,7 +153,7 @@ export const kk: Dictionary = {
     title: 'Тілектер тізімін құру',
     subtitle: 'Достарыңыз сізге блокчейндегі ашықхатпен SOL сыйлай алатын сілтеме алады.',
     fTitle: 'Не қалайсыз?',
-    fTitlePh: 'Мысалы: Жаңа құлаққап, Туған күнге жинақ',
+    fTitlePh: 'Мысалы: Жаңа құлаққап',
     fFor: 'Кімге арналған?',
     fForPh: 'Мысалы: Айнұр',
     fGoal: 'Мақсат',
@@ -191,6 +194,7 @@ export const kk: Dictionary = {
     modAi: "Мәтін орынсыз көрінеді. Өзгертіңізші.",
     premiumTitle: "Ашықхат безендіру",
     premiumFree: "Қарапайым",
+    premiumNoFee: 'тегін',
     premiumNames: { aurora: "Аврора", confetti: "Конфетти", gold: "Алтын" },
     premiumPrice: "+{price} SOL",
     premiumHint: "Премиум безендіру сол транзакцияда төленеді және SolWish-ті қолдайды.",

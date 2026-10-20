@@ -31,8 +31,8 @@ function HeroPreview() {
   }[locale];
 
   return (
-    <div className="relative mx-auto mb-16 w-full max-w-sm md:mb-0" aria-hidden="true">
-      <div className="absolute -inset-6 -z-10 rounded-[2.5rem] bg-gradient-to-tr from-brand/15 via-white to-[#14F195]/20 blur-2xl" />
+    <div className="relative mx-auto mb-32 w-full max-w-sm md:mb-16" aria-hidden="true">
+      <div className="absolute -inset-y-6 inset-x-0 -z-10 rounded-[2.5rem] sm:-inset-x-6 bg-gradient-to-tr from-brand/15 via-white to-[#14F195]/20 blur-2xl" />
       <div className="card overflow-hidden">
         <img src="/covers/music.jpg" alt="" className="h-36 w-full object-cover" />
         <div className="space-y-3 p-5">
@@ -48,7 +48,7 @@ function HeroPreview() {
           <div className="btn-primary w-full">{t.wish.send.replace('{amount}', '0.5')}</div>
         </div>
       </div>
-      <div className="card absolute -bottom-20 -right-2 w-56 rotate-2 p-4 sm:-right-12">
+      <div className="card absolute -bottom-28 right-2 w-56 rotate-2 p-4 sm:-right-10">
         <div className="mb-1.5 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-mint">
           <BadgeCheck className="h-3.5 w-3.5" /> SPL Memo
         </div>

@@ -121,8 +121,9 @@ export default function PricingPage() {
         </Plan>
       </div>
 
-      <div className="mt-6 grid gap-5 md:grid-cols-[1fr_2fr]">
-        <div className="card p-6">
+      {/* Одна полоса: «Скоро» и примечание о комиссии сети, без пустой карточки. */}
+      <div className="card mt-6 flex flex-col gap-4 p-6 md:flex-row md:items-start md:gap-10">
+        <div className="md:w-1/2">
           <p className="flex items-center gap-2 font-bold">
             <Clock className="h-4 w-4 text-brand" />
             {p.soonTitle}
@@ -133,7 +134,9 @@ export default function PricingPage() {
             ))}
           </ul>
         </div>
-        <p className="card flex items-center p-6 text-sm text-ink-2">{p.note}</p>
+        <p className="border-t border-line pt-4 text-sm text-ink-3 md:w-1/2 md:border-l md:border-t-0 md:pl-10 md:pt-0">
+          {p.note}
+        </p>
       </div>
 
       <section id="business" className="mt-14 scroll-mt-24">

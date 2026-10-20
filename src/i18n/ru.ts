@@ -13,6 +13,7 @@ export const ru: Dictionary = {
     tryAgain: 'Попробовать снова',
   },
   wallet: {
+    connectShort: 'Кошелёк',
     connect: 'Подключить кошелёк',
     connecting: 'Подключаем…',
     change: 'Сменить кошелёк',
@@ -21,6 +22,8 @@ export const ru: Dictionary = {
     disconnect: 'Отключить',
   },
   nav: {
+    menu: 'Меню',
+    closeMenu: 'Закрыть меню',
     demo: "Демо",
     about: "О нас",
     pricing: "Тарифы",
@@ -150,7 +153,7 @@ export const ru: Dictionary = {
     title: 'Создать вишлист',
     subtitle: 'Друзья получат ссылку, по которой смогут подарить вам SOL с открыткой в блокчейне.',
     fTitle: 'Что вы хотите?',
-    fTitlePh: 'Например: Новые наушники, Сбор на день рождения',
+    fTitlePh: 'Например: Новые наушники',
     fFor: 'Для кого сбор?',
     fForPh: 'Например: Айнура',
     fGoal: 'Цель',
@@ -191,6 +194,7 @@ export const ru: Dictionary = {
     modAi: "Текст выглядит неуместным. Пожалуйста, измените его.",
     premiumTitle: "Оформление открытки",
     premiumFree: "Обычная",
+    premiumNoFee: 'бесплатно',
     premiumNames: { aurora: "Аврора", confetti: "Конфетти", gold: "Золото" },
     premiumPrice: "+{price} SOL",
     premiumHint: "Премиум-оформление оплачивается в той же транзакции и поддерживает SolWish.",

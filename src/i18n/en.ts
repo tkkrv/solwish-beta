@@ -12,6 +12,7 @@ export const en = {
     tryAgain: 'Try again',
   },
   wallet: {
+    connectShort: 'Wallet',
     connect: 'Connect wallet',
     connecting: 'Connecting…',
     change: 'Change wallet',
@@ -20,6 +21,8 @@ export const en = {
     disconnect: 'Disconnect',
   },
   nav: {
+    menu: 'Menu',
+    closeMenu: 'Close menu',
     demo: "Demo",
     about: "About",
     pricing: "Pricing",
@@ -146,7 +149,7 @@ export const en = {
     title: 'Create a wishlist',
     subtitle: 'Your friends will get a link to gift you SOL with an on-chain greeting card.',
     fTitle: 'What do you wish for?',
-    fTitlePh: 'e.g. New headphones, Birthday fund',
+    fTitlePh: 'e.g. New headphones',
     fFor: 'Who is it for?',
     fForPh: 'e.g. Aynura',
     fGoal: 'Goal',
@@ -187,6 +190,7 @@ export const en = {
     modAi: "The text looks inappropriate. Please change it.",
     premiumTitle: "Card design",
     premiumFree: "Classic",
+    premiumNoFee: 'free',
     premiumNames: { aurora: "Aurora", confetti: "Confetti", gold: "Gold" },
     premiumPrice: "+{price} SOL",
     premiumHint: "Premium design is paid in the same transaction and supports SolWish.",

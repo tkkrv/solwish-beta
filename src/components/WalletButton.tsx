@@ -9,13 +9,15 @@ const BaseWalletMultiButton = dynamic(
   { ssr: false, loading: () => <div className="h-10 w-[150px] rounded-xl bg-line/60" /> }
 );
 
-export default function WalletButton() {
+/** short — короткая подпись «Кошелёк» для узких экранов. */
+export default function WalletButton({ short = false }: { short?: boolean }) {
   const { t } = useLanguage();
+  const connect = short ? t.wallet.connectShort : t.wallet.connect;
   return (
     <BaseWalletMultiButton
       labels={{
-        'no-wallet': t.wallet.connect,
-        'has-wallet': t.wallet.connect,
+        'no-wallet': connect,
+        'has-wallet': connect,
         connecting: t.wallet.connecting,
         'change-wallet': t.wallet.change,
         'copy-address': t.wallet.copyAddress,

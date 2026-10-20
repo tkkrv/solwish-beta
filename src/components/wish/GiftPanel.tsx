@@ -566,8 +566,8 @@ export default function GiftPanel({
                     className={`h-8 w-full rounded-lg ${st ? STYLE_CLASSES[st].swatch : 'bg-gradient-to-br from-brand-soft to-mint-soft'}`}
                   />
                   {st ? w.premiumNames[st] : w.premiumFree}
-                  <span className="font-mono font-medium text-ink-3">
-                    {st ? fmt(w.premiumPrice, { price: formatSol(PREMIUM_PRICE_SOL) }) : '0'}
+                  <span className="whitespace-nowrap font-mono text-[10px] font-medium text-ink-3">
+                    {st ? fmt(w.premiumPrice, { price: formatSol(PREMIUM_PRICE_SOL) }) : w.premiumNoFee}
                   </span>
                 </button>
               );

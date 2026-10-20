@@ -1,7 +1,9 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { Menu, X } from 'lucide-react';
 import Logo from './Logo';
 import LanguageSwitcher from './LanguageSwitcher';
 import WalletButton from './WalletButton';
@@ -10,6 +12,7 @@ import { useLanguage } from '@/i18n/LanguageProvider';
 export default function SiteHeader() {
   const { t } = useLanguage();
   const pathname = usePathname();
+  const [open, setOpen] = useState(false);
   const links = [
     { href: '/create', label: t.nav.createWish },
     { href: '/gift', label: t.nav.giftLink },
@@ -17,6 +20,7 @@ export default function SiteHeader() {
     { href: '/pricing', label: t.nav.pricing },
     { href: '/demo', label: t.nav.demo },
   ];
+  const active = (href: string) => pathname?.startsWith(href);
 
   return (
     <header className="sticky top-0 z-40 border-b border-line/80 bg-canvas/85 backdrop-blur-xl">
@@ -29,7 +33,7 @@ export default function SiteHeader() {
                 key={l.href}
                 href={l.href}
                 className={`rounded-lg px-3 py-2 text-sm font-semibold transition ${
-                  pathname?.startsWith(l.href) ? 'text-ink' : 'text-ink-2 hover:text-ink'
+                  active(l.href) ? 'text-ink' : 'text-ink-2 hover:text-ink'
                 }`}
               >
                 {l.label}
@@ -38,31 +42,59 @@ export default function SiteHeader() {
           </nav>
         </div>
         <div className="flex items-center gap-2">
-          <div className="hidden sm:block">
+          <div className="hidden lg:block">
             <LanguageSwitcher />
           </div>
-          <WalletButton />
+          <div className="hidden sm:block">
+            <WalletButton />
+          </div>
+          <div className="sm:hidden">
+            <WalletButton short />
+          </div>
+          <button
+            type="button"
+            onClick={() => setOpen((v) => !v)}
+            aria-expanded={open}
+            aria-controls="mobile-menu"
+            aria-label={open ? t.nav.closeMenu : t.nav.menu}
+            className="flex h-10 w-10 items-center justify-center rounded-xl border border-line bg-surface text-ink transition hover:border-ink-3 lg:hidden"
+          >
+            {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </button>
         </div>
       </div>
-      {/* Мобильная навигация */}
-      <div className="flex items-center justify-between gap-2 border-t border-line/60 px-4 py-2 lg:hidden">
-        <nav className="-mx-1 flex min-w-0 gap-0.5 overflow-x-auto px-1 pr-6 [mask-image:linear-gradient(to_right,black_80%,transparent)] [scrollbar-width:none]">
-          {links.map((l) => (
-            <Link
-              key={l.href}
-              href={l.href}
-              className={`whitespace-nowrap rounded-lg px-2 py-1.5 text-[13px] font-semibold ${
-                pathname?.startsWith(l.href) ? 'bg-surface text-ink' : 'text-ink-2'
-              }`}
-            >
-              {l.label}
-            </Link>
-          ))}
-        </nav>
-        <div className="shrink-0 sm:hidden">
-          <LanguageSwitcher compact />
-        </div>
-      </div>
+
+      {/* Мобильное меню: крупные пункты и выбор языка */}
+      {open && (
+        <>
+          <button
+            type="button"
+            aria-label={t.nav.closeMenu}
+            onClick={() => setOpen(false)}
+            className="fixed inset-x-0 top-full h-screen w-full cursor-default bg-ink/20 lg:hidden"
+          />
+          <div id="mobile-menu" className="border-t border-line/60 bg-canvas px-4 pb-5 pt-2 shadow-lg lg:hidden">
+            <nav className="mx-auto flex max-w-6xl flex-col">
+              {links.map((l) => (
+                <Link
+                  key={l.href}
+                  href={l.href}
+                  onClick={() => setOpen(false)}
+                  className={`rounded-xl px-3 py-3 text-base font-semibold ${
+                    active(l.href) ? 'bg-surface text-ink' : 'text-ink-2 hover:bg-surface hover:text-ink'
+                  }`}
+                >
+                  {l.label}
+                </Link>
+              ))}
+            </nav>
+            <div className="mx-auto mt-3 flex max-w-6xl items-center justify-between border-t border-line/60 px-3 pt-4">
+              <span className="text-sm font-semibold text-ink-3">Язык · Тіл · Language</span>
+              <LanguageSwitcher />
+            </div>
+          </div>
+        </>
+      )}
     </header>
   );
 }

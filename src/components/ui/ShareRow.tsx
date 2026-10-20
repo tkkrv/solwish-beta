@@ -40,10 +40,11 @@ export default function ShareRow({ url, text }: { url: string; text: string }) {
       open(`https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`);
     }
   };
-  const item = 'btn-secondary flex-1 px-3 py-2 text-sm';
+  // В одну строку даже на узких экранах: подписи брендов + компактная кнопка системного меню.
+  const item = 'btn-secondary min-w-0 flex-1 gap-1.5 whitespace-nowrap px-2 py-2 text-sm';
 
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className="flex gap-2">
       <button
         type="button"
         className={item}
@@ -59,17 +60,19 @@ export default function ShareRow({ url, text }: { url: string; text: string }) {
         onClick={() =>
           open(`https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`)
         }
+        aria-label="Telegram"
       >
-        <TelegramIcon /> Telegram
+        <TelegramIcon /> <span className="hidden min-[380px]:inline">Telegram</span>
       </button>
       <button
         type="button"
         className={item}
         onClick={() => open(`https://api.whatsapp.com/send?text=${encodeURIComponent(`${text}\n${url}`)}`)}
+        aria-label="WhatsApp"
       >
-        <WhatsAppIcon /> WhatsApp
+        <WhatsAppIcon /> <span className="hidden min-[380px]:inline">WhatsApp</span>
       </button>
-      <button type="button" className={item} onClick={native} aria-label={t.common.share}>
+      <button type="button" className="btn-secondary flex-none px-3 py-2" onClick={native} aria-label={t.common.share}>
         <Share2 className="h-4 w-4" />
       </button>
     </div>
